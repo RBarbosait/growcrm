@@ -3,6 +3,7 @@
 export const runtime = "edge"
 export const dynamic = "force-dynamic"
 
+import { supabase } from "@/lib/supabase"
 import { useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
@@ -29,7 +30,7 @@ import {
   CheckCircle,
 } from "lucide-react"
 
-const API_URL = "growcrm-api-production.up.railway.app
+const API_URL = "https://growcrm-api-production.up.railway.app"
 
 interface User {
   email: string
@@ -47,15 +48,28 @@ export default function DashboardPage() {
   const searchParams = useSearchParams()
 
   useEffect(() => {
-    const userData = localStorage.getItem("casadata_user")
+ const loadSession = async () => {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession()
 
-    if (!userData) {
-      router.push("/auth/login")
-      return
-    }
+  if (!session) {
+    router.push("/auth/login")
+    return
+  }
 
-    const parsedUser = JSON.parse(userData)
-    setUser(parsedUser)
+  setUser({
+    email: session.user.email!,
+    name:
+      session.user.user_metadata.full_name ||
+      session.user.user_metadata.name ||
+      session.user.email!.split("@")[0],
+    freePublicationUsed: false,
+    subscriptionType: null,
+  })
+}
+
+loadSession()
 
     fetch(`${API_URL}/property`)
       .then((r) => r.json())
@@ -67,10 +81,10 @@ export default function DashboardPage() {
       .catch(() => setInsights({}))
   }, [router])
 
-  const handleLogout = () => {
-    localStorage.removeItem("casadata_user")
-    router.push("/")
-  }
+const handleLogout = async () => {
+  await supabase.auth.signOut()
+  router.push("/")
+}
 
   const getStatusColor = (status: string) => {
     if (status === "active") return "bg-green-100 text-green-800"
