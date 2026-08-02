@@ -49,7 +49,7 @@ const defaultProperties: Property[] = [
 export const getAllProperties = async (): Promise<Property[]> => {
   try {
     const res = await fetch(
-      "https://casadata-api-production.up.railway.app/property",
+      "https://growcrm-api-production.up.railway.app/property",
       { cache: "no-store" }
     )
 

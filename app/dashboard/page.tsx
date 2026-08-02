@@ -29,7 +29,7 @@ import {
   CheckCircle,
 } from "lucide-react"
 
-const API_URL = "https://casadata-api-production.up.railway.app"
+const API_URL = "growcrm-api-production.up.railway.app
 
 interface User {
   email: string

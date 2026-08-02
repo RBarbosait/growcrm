@@ -26,7 +26,7 @@ const ChartClient = dynamicImport(
 )
 export default async function Page({ params }: { params: { id: string } }) {
   const res = await fetch(
-    `https://casadata-api-production.up.railway.app/property/${params.id}?t=${Date.now()}`,
+    `https://growcrm-api-production.up.railway.app/property/${params.id}?t=${Date.now()}`,
     { cache: "no-store" }
   )
 

@@ -8,7 +8,7 @@ import { List } from "lucide-react"
 
 export default function HomePage() {
   const searchParams = useSearchParams()
-  const API_URL = "https://casadata-api-production.up.railway.app"
+  const API_URL = "https://growcrm-api-production.up.railway.app"
 
   useEffect(() => {
     const propertyId = searchParams.get("id")

@@ -27,7 +27,7 @@ export default function LeadCard({ lead }: any) {
   // 🔥 acciones
   const markAsSeen = async () => {
     await fetch(
-      `https://casadata-api-production.up.railway.app/lead/${lead.id}/seen`,
+      `https://growcrm-api-production.up.railway.app/lead/${lead.id}/seen`,
       { method: "PATCH" }
     )
 

@@ -15,7 +15,7 @@ import {
   CardDescription,
 } from "@/components/ui/card"
 
-const API_URL = "https://casadata-api-production.up.railway.app"
+const API_URL = "https://growcrm-api-production.up.railway.app"
 
 // 🔥 CONFIG CLOUDINARY
 const CLOUD_NAME = "dvlfzrpeq"

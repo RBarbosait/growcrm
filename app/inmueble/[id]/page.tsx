@@ -20,7 +20,7 @@ import {
 
 export const runtime = "edge"
 
-const API_URL = "https://casadata-api-production.up.railway.app"
+const API_URL = "https://growcrm-api-production.up.railway.app"
 
 // =========================
 // 🔥 SEND SAFE (FIX REAL)

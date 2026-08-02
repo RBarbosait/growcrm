@@ -7,7 +7,7 @@ import { useParams, useRouter } from "next/navigation"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 
-const API_URL = "https://casadata-api-production.up.railway.app"
+const API_URL = "https://growcrm-api-production.up.railway.app"
 
 export default function EditPropertyPage() {
   const { id } = useParams()
