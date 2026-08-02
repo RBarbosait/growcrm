@@ -1,30 +1,109 @@
-# Inmobiliaria app
+# GrowCRM
 
-*Automatically synced with your [v0.app](https://v0.app) deployments*
+> SaaS platform for managing private cannabis clubs.
 
-[![Deployed on Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-black?style=for-the-badge&logo=vercel)](https://vercel.com/rbarbosaits-projects/v0-inmobiliaria-app)
-[![Built with v0](https://img.shields.io/badge/Built%20with-v0.app-black?style=for-the-badge)](https://v0.app/chat/projects/qbp5kKe1B82)
+GrowCRM is a web platform designed to simplify the day-to-day administration of private cannabis clubs. The MVP focuses on member management, inventory, reservations, and club operations through a modern, scalable architecture.
 
-## Overview
+---
 
-This repository will stay in sync with your deployed chats on [v0.app](https://v0.app).
-Any changes you make to your deployed app will be automatically pushed to this repository from [v0.app](https://v0.app).
+## Project Status
 
-## Deployment
+🚧 Under active development.
 
-Your project is live at:
+This project is based on the infrastructure of the CasaData project and is being progressively refactored into GrowCRM.
 
-**[https://vercel.com/rbarbosaits-projects/v0-inmobiliaria-app](https://vercel.com/rbarbosaits-projects/v0-inmobiliaria-app)**
+---
 
-## Build your app
+## Tech Stack
 
-Continue building your app on:
+### Frontend
 
-**[https://v0.app/chat/projects/qbp5kKe1B82](https://v0.app/chat/projects/qbp5kKe1B82)**
+- Next.js
+- React
+- TypeScript
+- Tailwind CSS
 
-## How It Works
+### Backend
 
-1. Create and modify your project using [v0.app](https://v0.app)
-2. Deploy your chats from the v0 interface
-3. Changes are automatically pushed to this repository
-4. Vercel deploys the latest version from this repository
+- Node.js
+- Express.js
+
+### Database
+
+- PostgreSQL
+- Prisma ORM
+
+### Infrastructure
+
+- Cloudflare Pages
+- Railway
+- Supabase
+
+---
+
+## MVP Features
+
+- User authentication (Google / Email)
+- Club creation request workflow
+- Manual approval by Super Admin
+- Demo mode while club approval is pending
+- Club management
+- Member management
+- Product catalog
+- Inventory management
+- Reservation workflow
+- QR-based pickup
+- Push notifications
+
+---
+
+## Architecture Principles
+
+GrowCRM is built following these principles:
+
+- Clean Architecture
+- SOLID
+- Scalable domain modeling
+- Separation of concerns
+- Product-first engineering
+- Maintainable codebase
+
+---
+
+## Roadmap
+
+### Phase 1
+
+- Infrastructure migration
+- Project rebranding
+- Domain cleanup
+- New database schema
+
+### Phase 2
+
+- Authentication
+- Club onboarding
+- Club approval workflow
+- Demo mode
+
+### Phase 3
+
+- Products
+- Reservations
+- Inventory
+- Notifications
+
+### Phase 4
+
+- Plans
+- Analytics
+- Multi-admin support
+- Premium features
+
+---
+
+## License
+
+Private repository.
+
+Copyright © GrowCRM.
