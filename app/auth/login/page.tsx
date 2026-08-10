@@ -19,7 +19,7 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
 
-const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
+const handleLogin = async (e: React.FormEvent) => {
   e.preventDefault()
   setIsLoading(true)
 
@@ -38,17 +38,22 @@ const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
   router.push("/dashboard")
 }
 
-const handleGoogleLogin = async () => {
-  const { error } = await supabase.auth.signInWithOAuth({
-    provider: "google",
-    options: {
-      redirectTo: "http://localhost:3000/dashboard",
-    },
-  })
 
-  if (error) {
-    alert(error.message)
-  }
+const handleGoogleLogin = async () => {
+  console.log("URL", process.env.NEXT_PUBLIC_SUPABASE_URL)
+  console.log("ORIGIN", window.location.origin)
+
+const result = await supabase.auth.signInWithOAuth({
+  provider: "google",
+  options: {
+    redirectTo: `${window.location.origin}/dashboard`,
+    skipBrowserRedirect: true,
+  },
+})
+
+console.log(result.data.url)
+
+window.location.href = result.data.url!
 }
   return (
     <div className="relative min-h-screen overflow-hidden bg-white">

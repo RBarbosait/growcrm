@@ -1,35 +1,46 @@
 generator client {
-provider = "prisma-client-js"
+  provider = "prisma-client-js"
 }
 
 datasource db {
-provider = "postgresql"
-url      = env("DATABASE_URL")
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model User {
-id    String   @id @default(cuid())
-email String   @unique
-name  String?
+  id    String  @id @default(cuid())
+  email String  @unique
+  name  String?
 
-properties Property[]
+  clubId String?
+  club   Club?   @relation(fields: [clubId], references: [id])
+
+  properties Property[]
+}
+
+model Club {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+
+  users User[]
 }
 
 model Property {
-id            String   @id @default(cuid())
-title         String
-price         Float
-operationType String
-location      String
-description   String
+  id            String @id @default(cuid())
+  title         String
+  price         Float
+  operationType String
+  location      String
+  description   String
 
-ownerId String
-owner   User @relation(fields: [ownerId], references: [id])
+  ownerId String
+  owner   User   @relation(fields: [ownerId], references: [id])
 
-visits Visit[]
-leads  Lead[]
+  visits Visit[]
+  leads  Lead[]
 
-createdAt DateTime @default(now())
+  createdAt DateTime @default(now())
 }
 
 model Visit {
@@ -40,12 +51,13 @@ model Visit {
   sessionId  String
   createdAt  DateTime @default(now())
 }
+
 model Lead {
   id         String   @id @default(cuid())
   propertyId String
   property   Property @relation(fields: [propertyId], references: [id])
   type       String
   contact    String?
-  sessionId  String?   // 🔥 FIX CLAVE
+  sessionId  String? // 🔥 FIX CLAVE
   createdAt  DateTime @default(now())
 }

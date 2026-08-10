@@ -3,6 +3,7 @@ import { useState } from "react"
 import type React from "react"
 
 import { useRouter } from "next/navigation"
+import { supabase } from "@/lib/supabase"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -25,37 +26,58 @@ export default function RegisterPage() {
   const router = useRouter()
 
   const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault()
+  e.preventDefault()
 
-    if (formData.password !== formData.confirmPassword) {
-      alert("Las contraseñas no coinciden")
-      return
-    }
-
-    if (!formData.acceptTerms) {
-      alert("Debes aceptar los términos y condiciones")
-      return
-    }
-
-    setIsLoading(true)
-
-    // Simulate registration process
-    setTimeout(() => {
-      // Store user session
-      localStorage.setItem(
-        "casadata_user",
-        JSON.stringify({
-          email: formData.email,
-          name: formData.name,
-          freePublicationUsed: false,
-          subscriptionType: null,
-          registrationDate: new Date().toISOString(),
-        }),
-      )
-      setIsLoading(false)
-      router.push("/dashboard")
-    }, 1500)
+  if (formData.password !== formData.confirmPassword) {
+    alert("Las contraseñas no coinciden")
+    return
   }
+
+  if (!formData.acceptTerms) {
+    alert("Debes aceptar los términos y condiciones")
+    return
+  }
+
+  setIsLoading(true)
+
+  try {
+    const { data, error } = await supabase.auth.signUp({
+      email: formData.email,
+      password: formData.password,
+      options: {
+        data: {
+          full_name: formData.name,
+          name: formData.name,
+        },
+      },
+    })
+
+    if (error) {
+      console.error("REGISTER ERROR:", error)
+      alert(error.message)
+      return
+    }
+
+    console.log("REGISTER SUCCESS:", data)
+
+    if (!data.session) {
+      alert(
+        "Cuenta creada. Revisá tu email para confirmar tu cuenta antes de iniciar sesión."
+      )
+
+      router.push("/auth/login")
+      return
+    }
+
+    router.push("/dashboard")
+  } catch (error) {
+    console.error("REGISTER ERROR:", error)
+    alert("No se pudo crear la cuenta")
+  } finally {
+    setIsLoading(false)
+  }
+}
+  
 
   const updateFormData = (field: string, value: string | boolean) => {
     setFormData((prev) => ({ ...prev, [field]: value }))

@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
+import { supabase } from "@/lib/supabase"
 import type React from "react"
 import { useRouter } from "next/navigation"
 
@@ -55,16 +56,47 @@ export default function PublishPage() {
   // =========================
   // USER
   // =========================
-  useEffect(() => {
-    const userData = localStorage.getItem("casadata_user")
+useEffect(() => {
+  const test = async () => {
+    console.log("URL COMPLETA:", window.location.href)
+    console.log("HASH:", window.location.hash)
 
-    if (!userData) {
+    const result = await supabase.auth.exchangeCodeForSession(window.location.href)
+
+    console.log("exchangeCodeForSession", result)
+
+    const session = await supabase.auth.getSession()
+
+    console.log("SESSION", session)
+  }
+
+  test()
+}, [])
+useEffect(() => {
+  const loadUser = async () => {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession()
+
+    if (!session) {
       router.push("/auth/login")
       return
     }
 
-    setUser(JSON.parse(userData))
-  }, [router])
+    setUser({
+      email: session.user.email!,
+      name:
+        session.user.user_metadata.full_name ||
+        session.user.user_metadata.name ||
+        session.user.email!.split("@")[0],
+      phone: "",
+      freePublicationUsed: false,
+      subscriptionType: null,
+    })
+  }
+
+  loadUser()
+}, [router])
 
   // =========================
   // IMAGE SELECT (MULTI)
