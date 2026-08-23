@@ -32,6 +32,8 @@ import {
 } from "@/components/ui/card"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 
+const [showClubSelector, setShowClubSelector] = useState(false)
+
 const API_URL =
   process.env.NEXT_PUBLIC_API_URL ||
   "https://growcrm-api-production.up.railway.app"
