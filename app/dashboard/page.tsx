@@ -32,7 +32,6 @@ import {
 } from "@/components/ui/card"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 
-const [showClubSelector, setShowClubSelector] = useState(false)
 
 const API_URL =
   process.env.NEXT_PUBLIC_API_URL ||
@@ -69,6 +68,7 @@ export default function CatalogoPage() {
   const [user, setUser] = useState<User | null>(null)
   const [clubs, setClubs] = useState<Club[]>([])
   const [activeClub, setActiveClub] = useState<Club | null>(null)
+  const [showClubSelector, setShowClubSelector] = useState(false)
 
   const [products, setProducts] = useState<Product[]>([])
   const [search, setSearch] = useState("")
