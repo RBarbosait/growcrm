@@ -20,7 +20,7 @@ export default function HomePage() {
   }, [searchParams])
 
 return (
-<div className="relative min-h-screen bg-white text-zinc-900 overflow-hidden">
+<div className="relative min-h-screen overflow-x-hidden bg-white text-zinc-900">
 
       {/* 🔥 BACKGROUND GLOW */}
 <div className="absolute inset-0 -z-10 overflow-hidden">
