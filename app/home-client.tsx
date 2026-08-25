@@ -1,7 +1,7 @@
 "use client"
 
-import { useEffect } from "react"
-import { ChevronDown } from "lucide-react"
+import { useEffect, useState } from "react"
+import { ChevronDown, Menu, X } from "lucide-react"
 import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -9,6 +9,7 @@ import { List } from "lucide-react"
 
 export default function HomePage() {
   const searchParams = useSearchParams()
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const API_URL = "https://growcrm-api-production.up.railway.app"
 
   useEffect(() => {
@@ -18,9 +19,8 @@ export default function HomePage() {
     }
   }, [searchParams])
 
-  return (
+return (
 <div className="relative min-h-screen bg-white text-zinc-900 overflow-hidden">
-    <div className="mx-auto max-w-7xl px-6">
 
       {/* 🔥 BACKGROUND GLOW */}
 <div className="absolute inset-0 -z-10 overflow-hidden">
@@ -31,8 +31,8 @@ export default function HomePage() {
 
 </div>
 {/* NAV */}
-<header className="w-full py-5">
-  <div className="mx-auto flex h-14 max-w-7xl items-center justify-between rounded-2xl border border-zinc-100 bg-white/90 px-5 shadow-sm backdrop-blur">
+<header className="relative z-50 w-full py-5">
+  <div className="mx-auto flex h-14 max-w-7xl items-center justify-between rounded-2xl border border-zinc-100 bg-white/90 px-4 shadow-sm backdrop-blur sm:px-5">
 
     {/* LOGO */}
     <Link
@@ -103,21 +103,138 @@ export default function HomePage() {
 
     </nav>
 
-    {/* ACTION */}
-    <Link href="/auth/login">
-      <Button
-        variant="outline"
-        className="h-10 rounded-full border-emerald-800 px-5 text-sm font-semibold text-emerald-900 transition hover:bg-emerald-50"
-      >
-        Ingresar / Registrarse
-      </Button>
-    </Link>
+{/* DESKTOP ACTION */}
+<Link href="/auth/login" className="hidden md:block">
+  <Button
+    variant="outline"
+    className="h-10 rounded-full border-emerald-800 px-5 text-sm font-semibold text-emerald-900 transition hover:bg-emerald-50"
+  >
+    Ingresar / Registrarse
+  </Button>
+</Link>
+
+{/* MOBILE MENU BUTTON */}
+<button
+  type="button"
+  onClick={() => setMobileMenuOpen(true)}
+  className="flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-200 text-zinc-700 md:hidden"
+  aria-label="Abrir menú"
+>
+  <Menu className="h-5 w-5" />
+</button>
 
   </div>
 </header>
 
+{/* MOBILE MENU */}
+{mobileMenuOpen && (
+  <div className="fixed inset-0 z-[100] md:hidden">
+
+    {/* BACKDROP */}
+    <button
+      type="button"
+      aria-label="Cerrar menú"
+      onClick={() => setMobileMenuOpen(false)}
+      className="absolute inset-0 bg-black/30 backdrop-blur-sm"
+    />
+
+    {/* DRAWER */}
+    <aside className="absolute right-0 top-0 flex h-full w-[82vw] max-w-sm flex-col bg-white shadow-2xl">
+
+      {/* HEADER */}
+      <div className="flex h-20 items-center justify-between border-b border-zinc-100 px-5">
+
+        <Link
+          href="/"
+          onClick={() => setMobileMenuOpen(false)}
+          className="text-xl font-bold tracking-tight text-zinc-950"
+        >
+          GrowCRM
+        </Link>
+
+        <button
+          type="button"
+          onClick={() => setMobileMenuOpen(false)}
+          className="flex h-10 w-10 items-center justify-center rounded-xl text-zinc-500 hover:bg-zinc-50"
+          aria-label="Cerrar menú"
+        >
+          <X className="h-5 w-5" />
+        </button>
+
+      </div>
+
+      {/* NAV */}
+      <nav className="flex-1 space-y-2 overflow-y-auto p-5">
+
+        <p className="mb-4 text-xs font-semibold uppercase tracking-wider text-zinc-400">
+          Navegación
+        </p>
+
+        <Link
+          href="/funcionalidades"
+          onClick={() => setMobileMenuOpen(false)}
+          className="block rounded-xl px-4 py-3 text-base font-medium text-zinc-700 hover:bg-zinc-50"
+        >
+          Funcionalidades
+        </Link>
+
+        <Link
+          href="/club-partners"
+          onClick={() => setMobileMenuOpen(false)}
+          className="block rounded-xl px-4 py-3 text-base font-medium text-zinc-700 hover:bg-zinc-50"
+        >
+          Club Partners
+        </Link>
+
+        <Link
+          href="/precios"
+          onClick={() => setMobileMenuOpen(false)}
+          className="block rounded-xl px-4 py-3 text-base font-medium text-zinc-700 hover:bg-zinc-50"
+        >
+          Precios
+        </Link>
+
+        <div className="my-4 border-t border-zinc-100" />
+
+        <Link
+          href="/como-funciona"
+          onClick={() => setMobileMenuOpen(false)}
+          className="block rounded-xl px-4 py-3 text-base font-medium text-zinc-700 hover:bg-zinc-50"
+        >
+          Cómo funciona
+        </Link>
+
+        <Link
+          href="/contactanos"
+          onClick={() => setMobileMenuOpen(false)}
+          className="block rounded-xl px-4 py-3 text-base font-medium text-zinc-700 hover:bg-zinc-50"
+        >
+          Contáctanos
+        </Link>
+
+      </nav>
+
+      {/* ACTIONS */}
+      <div className="border-t border-zinc-100 p-5">
+
+        <Link
+          href="/auth/login"
+          onClick={() => setMobileMenuOpen(false)}
+          className="block"
+        >
+          <Button className="h-12 w-full rounded-full bg-emerald-900 font-semibold hover:bg-emerald-800">
+            Ingresar / Registrarse
+          </Button>
+        </Link>
+
+      </div>
+
+    </aside>
+  </div>
+)}
+<div className="mx-auto max-w-7xl px-6">
  {/* HERO */}
-<section className="grid items-center gap-14 py-14 lg:grid-cols-[0.9fr_1.1fr] lg:gap-16 lg:py-16">
+<section className="grid items-center gap-10 py-10 sm:gap-14 sm:py-14 lg:grid-cols-[0.9fr_1.1fr] lg:gap-16 lg:py-16">
   {/* IZQUIERDA */}
   <div className="max-w-xl">
 
@@ -128,8 +245,8 @@ export default function HomePage() {
       </span>
     </div>
 
-<h1 className="text-5xl font-black leading-[1.02] tracking-tight text-zinc-950 sm:text-6xl lg:text-[64px]">
-  Administrá tu club.
+<h1 className="text-4xl font-black leading-[1.02] tracking-tight text-zinc-950 sm:text-6xl lg:text-[64px]">
+    Administrá tu club.
   <br />
   <span className="text-emerald-700">
     Conectá todo en un solo lugar.
@@ -197,167 +314,185 @@ export default function HomePage() {
       </div>
 
 
-      <div className="grid grid-cols-[145px_1fr]">
+      <div className="grid grid-cols-1 sm:grid-cols-[145px_1fr]">
 
-        {/* SIDEBAR */}
-        <div className="min-h-[420px] bg-zinc-950 p-4 text-white">
+  {/* SIDEBAR */}
+  <div className="hidden min-h-[420px] bg-zinc-950 p-4 text-white sm:block">
 
-          <div className="mb-6 rounded-xl bg-emerald-700 px-3 py-2 text-xs font-medium">
-            Inicio
-          </div>
+    <div className="mb-6 rounded-xl bg-emerald-700 px-3 py-2 text-xs font-medium">
+      Inicio
+    </div>
 
-          <div className="space-y-4 text-xs text-zinc-300">
-            <div>♙ Socios</div>
-            <div>▣ Catálogo</div>
-            <div>▤ Stock</div>
-            <div>▧ Reservas</div>
-            <div>◫ Ventas / Retiros</div>
-            <div>▢ Comunicación</div>
-            <div>◉ Reportes</div>
-            <div>⚙ Configuración</div>
-          </div>
+    <div className="space-y-4 text-xs text-zinc-300">
+      <div>♙ Socios</div>
+      <div>▣ Catálogo</div>
+      <div>▤ Stock</div>
+      <div>▧ Reservas</div>
+      <div>◫ Ventas / Retiros</div>
+      <div>▢ Comunicación</div>
+      <div>◉ Reportes</div>
+      <div>⚙ Configuración</div>
+    </div>
 
+  </div>
+
+  {/* DASHBOARD */}
+  <div className="min-w-0 p-4 sm:p-6">
+
+    <div className="mb-5 flex items-center justify-between gap-3">
+      <h3 className="text-sm font-semibold sm:text-base">
+        Resumen general
+      </h3>
+
+      <div className="shrink-0 rounded-full border px-3 py-1 text-[10px] sm:text-xs">
+        Club Verde
+      </div>
+    </div>
+
+    {/* MÉTRICAS */}
+    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
+
+      <div className="min-w-0 rounded-xl border p-3 sm:p-4">
+        <p className="text-[9px] leading-tight text-zinc-400">
+          Socios activos
+        </p>
+        <p className="mt-2 text-lg font-bold sm:text-xl">
+          248
+        </p>
+      </div>
+
+      <div className="min-w-0 rounded-xl border p-3 sm:p-4">
+        <p className="text-[9px] leading-tight text-zinc-400">
+          Reservas hoy
+        </p>
+        <p className="mt-2 text-lg font-bold sm:text-xl">
+          12
+        </p>
+      </div>
+
+      <div className="min-w-0 rounded-xl border p-3 sm:p-4">
+        <p className="text-[9px] leading-tight text-zinc-400">
+          Stock bajo
+        </p>
+        <p className="mt-2 text-lg font-bold sm:text-xl">
+          7
+        </p>
+      </div>
+
+      <div className="min-w-0 rounded-xl border p-3 sm:p-4">
+        <p className="text-[9px] leading-tight text-zinc-400">
+          Retiros hoy
+        </p>
+        <p className="mt-2 text-lg font-bold sm:text-xl">
+          18
+        </p>
+      </div>
+
+    </div>
+
+    {/* ACTIVIDAD */}
+    <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+
+      {/* RESERVAS */}
+      <div className="min-w-0 rounded-xl border p-3 sm:p-4">
+
+        <div className="mb-4 flex items-center justify-between gap-2">
+          <span className="text-xs font-semibold">
+            Reservas recientes
+          </span>
+
+          <span className="shrink-0 text-[9px] text-emerald-700">
+            Ver todas
+          </span>
         </div>
 
+        <div className="space-y-3 text-[10px] sm:text-xs">
 
-        {/* DASHBOARD */}
-        <div className="p-6">
-
-          <div className="mb-6 flex items-center justify-between">
-            <h3 className="font-semibold">
-              Resumen general
-            </h3>
-
-            <div className="rounded-full border px-3 py-1 text-xs">
-              Club Verde
+          <div className="flex items-center justify-between gap-2">
+            <div className="min-w-0">
+              <p className="truncate font-medium">Juan Pérez</p>
+              <p className="text-zinc-400">Reserva #1247</p>
             </div>
+            <span className="shrink-0 text-emerald-600">
+              Aprobada
+            </span>
           </div>
 
-
-          {/* MÉTRICAS */}
-          <div className="grid grid-cols-4 gap-3">
-
-            <div className="rounded-xl border p-4">
-              <p className="text-[10px] text-zinc-400">
-                Socios activos
-              </p>
-              <p className="mt-2 text-xl font-bold">
-                248
-              </p>
+          <div className="flex items-center justify-between gap-2">
+            <div className="min-w-0">
+              <p className="truncate font-medium">María González</p>
+              <p className="text-zinc-400">Reserva #1246</p>
             </div>
-
-            <div className="rounded-xl border p-4">
-              <p className="text-[10px] text-zinc-400">
-                Reservas hoy
-              </p>
-              <p className="mt-2 text-xl font-bold">
-                12
-              </p>
-            </div>
-
-            <div className="rounded-xl border p-4">
-              <p className="text-[10px] text-zinc-400">
-                Stock bajo
-              </p>
-              <p className="mt-2 text-xl font-bold">
-                7
-              </p>
-            </div>
-
-            <div className="rounded-xl border p-4">
-              <p className="text-[10px] text-zinc-400">
-                Retiros hoy
-              </p>
-              <p className="mt-2 text-xl font-bold">
-                18
-              </p>
-            </div>
-
+            <span className="shrink-0 text-amber-500">
+              Pendiente
+            </span>
           </div>
 
-
-          {/* CONTENIDO */}
-          <div className="mt-4 grid grid-cols-2 gap-4">
-
-            <div className="rounded-xl border p-4">
-
-              <div className="mb-4 flex justify-between">
-                <span className="text-xs font-semibold">
-                  Reservas recientes
-                </span>
-
-                <span className="text-[10px] text-emerald-700">
-                  Ver todas
-                </span>
-              </div>
-
-              <div className="space-y-4 text-xs">
-
-                <div className="flex justify-between">
-                  <span>Juan Pérez</span>
-                  <span className="text-emerald-600">
-                    Aprobada
-                  </span>
-                </div>
-
-                <div className="flex justify-between">
-                  <span>María González</span>
-                  <span className="text-amber-500">
-                    Pendiente
-                  </span>
-                </div>
-
-                <div className="flex justify-between">
-                  <span>Lucas Rodríguez</span>
-                  <span className="text-emerald-600">
-                    Aprobada
-                  </span>
-                </div>
-
-              </div>
-
+          <div className="flex items-center justify-between gap-2">
+            <div className="min-w-0">
+              <p className="truncate font-medium">Lucas Rodríguez</p>
+              <p className="text-zinc-400">Reserva #1245</p>
             </div>
-
-
-            <div className="rounded-xl border p-4">
-
-              <div className="mb-4 flex justify-between">
-                <span className="text-xs font-semibold">
-                  Stock bajo
-                </span>
-
-                <span className="text-[10px] text-emerald-700">
-                  Ver catálogo
-                </span>
-              </div>
-
-              <div className="space-y-4 text-xs">
-
-                <div className="flex justify-between">
-                  <span>Aceite 10ml</span>
-                  <span>3</span>
-                </div>
-
-                <div className="flex justify-between">
-                  <span>Flores Amnesia</span>
-                  <span>5</span>
-                </div>
-
-                <div className="flex justify-between">
-                  <span>Pre-roll Kush</span>
-                  <span>2</span>
-                </div>
-
-              </div>
-
-            </div>
-
+            <span className="shrink-0 text-emerald-600">
+              Aprobada
+            </span>
           </div>
 
         </div>
 
       </div>
 
+      {/* ACTIVIDAD / STOCK */}
+      <div className="min-w-0 rounded-xl border p-3 sm:p-4">
+
+        <div className="mb-4 flex items-center justify-between gap-2">
+          <span className="text-xs font-semibold">
+            Actividad reciente
+          </span>
+
+          <span className="shrink-0 text-[9px] text-emerald-700">
+            Ver todo
+          </span>
+        </div>
+
+        <div className="space-y-3 text-[10px] sm:text-xs">
+
+          <div>
+            <p className="font-medium">
+              Nueva reserva recibida
+            </p>
+            <p className="text-zinc-400">
+              Hace 5 min
+            </p>
+          </div>
+
+          <div>
+            <p className="font-medium">
+              Reserva aprobada
+            </p>
+            <p className="text-zinc-400">
+              Hace 15 min
+            </p>
+          </div>
+
+          <div>
+            <p className="font-medium">
+              Stock actualizado
+            </p>
+            <p className="text-zinc-400">
+              Hace 1 h
+            </p>
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
     </div>
 
   </div>
@@ -754,9 +889,9 @@ focus:ring-2 focus:ring-emerald-400"
 
 </footer>
 
-      
 </div>
-      {/* ANIMATIONS (igual que tuyo) */}
+
+{/* ANIMATIONS (igual que tuyo) */}
       <style jsx global>{`
         @keyframes fadeUp {
           from { opacity: 0; transform: translateY(20px); }

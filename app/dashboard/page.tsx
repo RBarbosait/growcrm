@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase"
 import {
   ArrowLeft,
   AlertTriangle,
+  Menu,
   BarChart3,
   Bell,
   Building2,
@@ -68,9 +69,10 @@ export default function CatalogoPage() {
   const [user, setUser] = useState<User | null>(null)
   const [clubs, setClubs] = useState<Club[]>([])
   const [activeClub, setActiveClub] = useState<Club | null>(null)
-  const [showClubSelector, setShowClubSelector] = useState(false)
+const [showClubSelector, setShowClubSelector] = useState(false)
+const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
-  const [products, setProducts] = useState<Product[]>([])
+const [products, setProducts] = useState<Product[]>([])
   const [search, setSearch] = useState("")
 
   const [loading, setLoading] = useState(true)
@@ -501,6 +503,176 @@ setShowClubSelector(true)
           </div>
 
         </aside>
+        {/* =================================================== */}
+{/* MOBILE MENU */}
+{/* =================================================== */}
+
+{mobileMenuOpen && (
+  <div className="fixed inset-0 z-[90] lg:hidden">
+
+    <button
+      type="button"
+      aria-label="Cerrar menú"
+      onClick={() => setMobileMenuOpen(false)}
+      className="absolute inset-0 bg-black/30 backdrop-blur-sm"
+    />
+
+    <aside className="relative z-10 flex h-full w-[min(82vw,320px)] flex-col bg-white shadow-2xl">
+
+      {/* LOGO */}
+
+      <div className="flex h-20 items-center justify-between border-b border-zinc-100 px-5">
+
+        <Link
+          href="/dashboard"
+          onClick={() => setMobileMenuOpen(false)}
+          className="flex items-center gap-2"
+        >
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-900 text-white">
+            <span className="text-sm font-bold">
+              G
+            </span>
+          </div>
+
+          <span className="text-xl font-bold tracking-tight">
+            GrowCRM
+          </span>
+        </Link>
+
+        <button
+          type="button"
+          onClick={() => setMobileMenuOpen(false)}
+          className="flex h-9 w-9 items-center justify-center rounded-xl text-zinc-400 hover:bg-zinc-100"
+          aria-label="Cerrar menú"
+        >
+          <X className="h-5 w-5" />
+        </button>
+
+      </div>
+
+      {/* CLUB */}
+
+      <div className="px-4 py-5">
+
+        <div className="rounded-2xl bg-zinc-50 p-4">
+
+          <p className="text-xs font-medium uppercase tracking-wide text-zinc-400">
+            Club
+          </p>
+
+          <p className="mt-2 truncate font-semibold text-zinc-900">
+            {activeClub?.name || "Sin club"}
+          </p>
+
+        </div>
+
+      </div>
+
+      {/* NAVIGATION */}
+
+      <nav className="flex-1 space-y-1 overflow-y-auto px-4">
+
+        <DashboardNavItem
+          icon={BarChart3}
+          label="Inicio"
+          onClick={() =>
+            (window.location.href = "/dashboard")
+          }
+        />
+
+        <DashboardNavItem
+          icon={Users}
+          label="Socios"
+          onClick={() =>
+            (window.location.href = "/dashboard/socios")
+          }
+        />
+
+        <DashboardNavItem
+          icon={Package}
+          label="Catálogo"
+          active
+        />
+
+        <DashboardNavItem
+          icon={Package}
+          label="Stock"
+          onClick={() =>
+            (window.location.href = "/dashboard/stock")
+          }
+        />
+
+        <DashboardNavItem
+          icon={CalendarDays}
+          label="Reservas"
+          onClick={() =>
+            (window.location.href = "/dashboard/reservas")
+          }
+        />
+
+        <DashboardNavItem
+          icon={ShoppingCart}
+          label="Ventas"
+          onClick={() =>
+            (window.location.href = "/dashboard/ventas")
+          }
+        />
+
+        <DashboardNavItem
+          icon={ArrowDownToLine}
+          label="Retiros"
+          onClick={() =>
+            (window.location.href = "/dashboard/retiros")
+          }
+        />
+
+        <DashboardNavItem
+          icon={Bell}
+          label="Comunicación"
+          onClick={() =>
+            (window.location.href = "/dashboard/comunicacion")
+          }
+        />
+
+        <DashboardNavItem
+          icon={BarChart3}
+          label="Reportes"
+          onClick={() =>
+            (window.location.href = "/dashboard/reportes")
+          }
+        />
+
+        <div className="my-4 border-t border-zinc-100" />
+
+        <DashboardNavItem
+          icon={Settings}
+          label="Configuración"
+          onClick={() =>
+            (window.location.href = "/dashboard/configuracion")
+          }
+        />
+
+      </nav>
+
+      {/* LOGOUT */}
+
+      <div className="border-t border-zinc-100 p-4">
+
+        <button
+          type="button"
+          onClick={handleLogout}
+          className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-zinc-200 text-sm font-semibold text-zinc-700"
+        >
+          <LogOut className="h-4 w-4" />
+          Cerrar sesión
+        </button>
+
+      </div>
+
+    </aside>
+
+  </div>
+)}
 
         {/* =================================================== */}
         {/* MAIN */}
@@ -510,9 +682,16 @@ setShowClubSelector(true)
 
           {/* TOP BAR */}
 
-          <header className="flex min-h-20 items-center justify-between border-b border-zinc-200 bg-white px-6 py-4 md:px-8">
-
+<header className="flex min-h-16 items-center justify-between border-b border-zinc-200 bg-white px-4 py-3 sm:min-h-20 sm:px-6 sm:py-4 md:px-8">
             <div className="flex items-center gap-4">
+                <button
+  type="button"
+  onClick={() => setMobileMenuOpen(true)}
+  className="flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-200 text-zinc-600 lg:hidden"
+  aria-label="Abrir menú"
+>
+  <Menu className="h-5 w-5" />
+</button>
 
               <Link
                 href="/dashboard"
@@ -570,8 +749,7 @@ setShowClubSelector(true)
 
           {/* CONTENT */}
 
-          <div className="mx-auto max-w-7xl space-y-8 p-6 md:p-8">
-
+<div className="mx-auto max-w-7xl space-y-6 p-4 sm:space-y-8 sm:p-6 md:p-8">
             {/* PAGE INTRO */}
 
             <div className="flex flex-col justify-between gap-5 md:flex-row md:items-end">
@@ -582,7 +760,7 @@ setShowClubSelector(true)
                   {activeClub?.name}
                 </p>
 
-                <h2 className="mt-1 text-3xl font-bold tracking-tight">
+                <h2 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">
                   Productos
                 </h2>
 
@@ -596,7 +774,7 @@ setShowClubSelector(true)
                 href="/dashboard/catalogo/nuevo"
                 className="shrink-0"
               >
-                <Button className="h-11 rounded-full bg-emerald-900 px-6 font-semibold hover:bg-emerald-800">
+                <Button className="h-11 w-full rounded-full bg-emerald-900 px-6 font-semibold hover:bg-emerald-800 sm:w-auto">
                   <Plus className="mr-2 h-4 w-4" />
                   Agregar producto
                 </Button>
@@ -786,8 +964,7 @@ function ProductCard({
 
       {/* IMAGE */}
 
-      <div className="relative h-52 overflow-hidden bg-zinc-100">
-
+<div className="relative h-44 overflow-hidden bg-zinc-100 sm:h-52">
         {product.imageUrl ? (
 
           <img
@@ -989,8 +1166,7 @@ function EditProductModal({
 
       {/* MODAL */}
 
-      <div className="relative z-10 max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-[28px] bg-white shadow-2xl">
-
+<div className="relative z-10 flex max-h-[94vh] w-[calc(100%-1rem)] max-w-2xl flex-col overflow-y-auto rounded-[24px] bg-white shadow-2xl sm:max-h-[90vh] sm:w-full sm:rounded-[28px]">
         {/* HEADER */}
 
         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-zinc-100 bg-white px-6 py-5">
@@ -1021,8 +1197,7 @@ function EditProductModal({
 
         <form
           onSubmit={handleSubmit}
-          className="space-y-6 p-6"
-        >
+className="space-y-6 p-4 sm:p-6"        >
 
           {/* IMAGE */}
 

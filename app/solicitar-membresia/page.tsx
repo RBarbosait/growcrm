@@ -2,20 +2,21 @@
 
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
-import { ArrowLeft, Check } from "lucide-react"
+import { useState } from "react"
+import { ArrowLeft, Check, Menu, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 export default function SolicitarMembresiaPage() {
   const searchParams = useSearchParams()
   const club = searchParams.get("club") || ""
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   return (
     <main className="min-h-screen bg-white text-zinc-950">
 
       {/* NAV */}
       <header className="relative z-50 w-full py-5">
-        <div className="mx-auto flex h-14 max-w-7xl items-center justify-between rounded-2xl border border-zinc-100 bg-white/90 px-5 shadow-sm backdrop-blur">
-
+<div className="mx-auto flex h-14 max-w-7xl items-center justify-between rounded-2xl border border-zinc-100 bg-white/90 px-4 shadow-sm backdrop-blur sm:px-5">
           {/* LOGO */}
           <Link
             href="/"
@@ -127,27 +128,140 @@ export default function SolicitarMembresiaPage() {
 
           </nav>
 
-          {/* ACTION */}
-          <Link href="/auth/login">
-            <Button
-              variant="outline"
-              className="h-10 rounded-full border-emerald-800 px-5 text-sm font-semibold text-emerald-900 transition hover:bg-emerald-50"
-            >
-              Ingresar / Registrarse
-            </Button>
-          </Link>
+          {/* DESKTOP ACTION */}
+<Link href="/auth/login" className="hidden md:block">
+  <Button
+    variant="outline"
+    className="h-10 rounded-full border-emerald-800 px-5 text-sm font-semibold text-emerald-900 transition hover:bg-emerald-50"
+  >
+    Ingresar / Registrarse
+  </Button>
+</Link>
+
+{/* MOBILE MENU */}
+<button
+  type="button"
+  onClick={() => setMobileMenuOpen(true)}
+  className="flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-200 text-zinc-700 md:hidden"
+  aria-label="Abrir menú"
+>
+  <Menu className="h-5 w-5" />
+</button>
 
         </div>
-      </header>
+</header>
 
-      {/* CONTENT */}
+{/* MOBILE MENU */}
+{mobileMenuOpen && (
+  <div className="fixed inset-0 z-[100] md:hidden">
+
+    <button
+      type="button"
+      aria-label="Cerrar menú"
+      onClick={() => setMobileMenuOpen(false)}
+      className="absolute inset-0 bg-black/30 backdrop-blur-sm"
+    />
+
+    <aside className="absolute right-0 top-0 flex h-full w-[82vw] max-w-sm flex-col bg-white shadow-2xl">
+
+      <div className="flex h-20 items-center justify-between border-b border-zinc-100 px-5">
+
+        <Link
+          href="/"
+          onClick={() => setMobileMenuOpen(false)}
+          className="text-xl font-bold tracking-tight text-zinc-950"
+        >
+          GrowCRM
+        </Link>
+
+        <button
+          type="button"
+          onClick={() => setMobileMenuOpen(false)}
+          className="flex h-10 w-10 items-center justify-center rounded-xl text-zinc-500 hover:bg-zinc-50"
+          aria-label="Cerrar menú"
+        >
+          <X className="h-5 w-5" />
+        </button>
+
+      </div>
+
+      <nav className="flex-1 space-y-2 overflow-y-auto p-5">
+
+        <p className="mb-4 text-xs font-semibold uppercase tracking-wider text-zinc-400">
+          Navegación
+        </p>
+
+        <Link
+          href="/funcionalidades"
+          onClick={() => setMobileMenuOpen(false)}
+          className="block rounded-xl px-4 py-3 text-base font-medium text-zinc-700 hover:bg-zinc-50"
+        >
+          Funcionalidades
+        </Link>
+
+        <Link
+          href="/club-partners"
+          onClick={() => setMobileMenuOpen(false)}
+          className="block rounded-xl px-4 py-3 text-base font-medium text-zinc-700 hover:bg-zinc-50"
+        >
+          Club Partners
+        </Link>
+
+        <Link
+          href="/precios"
+          onClick={() => setMobileMenuOpen(false)}
+          className="block rounded-xl px-4 py-3 text-base font-medium text-zinc-700 hover:bg-zinc-50"
+        >
+          Precios
+        </Link>
+
+        <div className="my-4 border-t border-zinc-100" />
+
+        <Link
+          href="/como-funciona"
+          onClick={() => setMobileMenuOpen(false)}
+          className="block rounded-xl px-4 py-3 text-base font-medium text-zinc-700 hover:bg-zinc-50"
+        >
+          Cómo funciona
+        </Link>
+
+        <Link
+          href="/contactanos"
+          onClick={() => setMobileMenuOpen(false)}
+          className="block rounded-xl px-4 py-3 text-base font-medium text-zinc-700 hover:bg-zinc-50"
+        >
+          Contáctanos
+        </Link>
+
+      </nav>
+
+      <div className="border-t border-zinc-100 p-5">
+
+        <Link
+          href="/auth/login"
+          onClick={() => setMobileMenuOpen(false)}
+          className="block"
+        >
+          <Button className="h-12 w-full rounded-full bg-emerald-900 font-semibold hover:bg-emerald-800">
+            Ingresar / Registrarse
+          </Button>
+        </Link>
+
+      </div>
+
+    </aside>
+
+  </div>
+)}
+
+{/* CONTENT */}
       <section className="relative overflow-hidden">
 
         <div className="absolute -top-40 left-1/2 -z-10 h-[600px] w-[600px] -translate-x-1/2 rounded-full bg-emerald-100/60 blur-3xl" />
 
-        <div className="mx-auto max-w-6xl px-6 pb-24 pt-16 md:pt-24">
+<div className="mx-auto max-w-6xl px-4 pb-16 pt-10 sm:px-6 sm:pb-24 sm:pt-16 md:pt-24">
 
-          <div className="grid gap-16 md:grid-cols-2 md:items-start">
+          <div className="grid gap-10 sm:gap-16 md:grid-cols-2 md:items-start">
 
             {/* INTRO */}
             <div className="pt-4">
@@ -170,7 +284,7 @@ export default function SolicitarMembresiaPage() {
                   </span>
                 </div>
 
-                <h1 className="text-5xl font-black leading-[1.02] tracking-tight sm:text-6xl">
+                <h1 className="text-4xl font-black leading-[1.02] tracking-tight sm:text-6xl">
                   Formá parte
                   <br />
                   <span className="text-emerald-700">
@@ -178,7 +292,7 @@ export default function SolicitarMembresiaPage() {
                   </span>
                 </h1>
 
-                <p className="mt-7 max-w-xl text-lg leading-relaxed text-zinc-500 sm:text-xl">
+<p className="mt-6 max-w-xl text-base leading-relaxed text-zinc-500 sm:mt-7 sm:text-xl">
                   Completá tus datos y enviá tu solicitud de membresía.
                   El club recibirá tu solicitud y se pondrá en contacto
                   con vos.
@@ -220,7 +334,7 @@ export default function SolicitarMembresiaPage() {
             </div>
 
             {/* FORM */}
-            <div className="rounded-3xl border border-zinc-200 bg-white p-7 shadow-sm md:p-9">
+            <div className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm sm:p-7 md:p-9">
 
               <div className="mb-8">
                 <h2 className="text-2xl font-bold tracking-tight">
@@ -333,7 +447,7 @@ export default function SolicitarMembresiaPage() {
 
         <div className="mx-auto max-w-7xl px-6">
 
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 
             <p className="text-sm text-zinc-400">
               © {new Date().getFullYear()} GrowCRM

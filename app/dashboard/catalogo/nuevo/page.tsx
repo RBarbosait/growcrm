@@ -312,7 +312,7 @@ export default function NuevoProductoPage() {
 
       {/* HEADER */}
 
-      <header className="flex h-20 items-center border-b border-zinc-200 bg-white px-6 md:px-8">
+      <header className="flex min-h-20 items-center border-b border-zinc-200 bg-white px-4 py-3 sm:px-6 md:px-8">
 
         <div className="flex items-center gap-4">
 
@@ -345,15 +345,15 @@ export default function NuevoProductoPage() {
 
       {/* CONTENT */}
 
-      <main className="mx-auto max-w-4xl px-6 py-8 md:py-10">
+      <main className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-8 md:py-10">
 
-        <div className="mb-8">
+        <div className="mb-6 sm:mb-8">
 
           <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700">
             <Package className="h-6 w-6" />
           </div>
 
-          <h2 className="text-3xl font-bold tracking-tight">
+          <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
             Agregar producto
           </h2>
 
@@ -371,7 +371,7 @@ export default function NuevoProductoPage() {
             </CardTitle>
           </CardHeader>
 
-          <CardContent>
+          <CardContent className="px-4 pb-5 sm:px-6 sm:pb-6">
 
             <form
               onSubmit={handleSubmit}
@@ -427,7 +427,7 @@ export default function NuevoProductoPage() {
               {/* DYNAMIC ATTRIBUTES */}
 
               {selectedCategory && (
-                <div className="space-y-6 border-t border-zinc-100 pt-6">
+                <div className="space-y-5 border-t border-zinc-100 pt-5 sm:space-y-6 sm:pt-6">
 
                   {selectedCategory.attributes
                     .slice()
@@ -492,7 +492,7 @@ export default function NuevoProductoPage() {
                     loadingCategories ||
                     !selectedCategory
                   }
-                  className="h-12 rounded-xl bg-emerald-900 px-7 font-semibold hover:bg-emerald-800"
+                  className="h-12 w-full rounded-xl bg-emerald-900 px-7 font-semibold hover:bg-emerald-800 sm:w-auto"
                 >
                   <Save className="mr-2 h-4 w-4" />
 

@@ -1,16 +1,19 @@
 "use client"
 
 import Link from "next/link"
+import { useState } from "react"
 import {
   ChevronDown,
   ArrowRight,
   Users,
+  Menu,
+  X,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 const partners = [
   {
-    name: "El Club del Diego",
+    name: "La Paz Club",
     type: "Club Partner",
     description:
       "Un club que utiliza GrowCRM para organizar sus socios, reservas, productos y operación diaria.",
@@ -19,12 +22,14 @@ const partners = [
 ]
 
 export default function ClubPartnersPage() {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+
   return (
     <main className="min-h-screen bg-white text-zinc-950">
 
       {/* NAV */}
       <header className="relative z-50 w-full py-5">
-        <div className="mx-auto flex h-14 max-w-7xl items-center justify-between rounded-2xl border border-zinc-100 bg-white/90 px-5 shadow-sm backdrop-blur">
+<div className="mx-auto flex h-14 max-w-7xl items-center justify-between rounded-2xl border border-zinc-100 bg-white/90 px-4 shadow-sm backdrop-blur sm:px-5">
 
           {/* LOGO */}
           <Link
@@ -111,25 +116,138 @@ export default function ClubPartnersPage() {
 
           </nav>
 
-          {/* ACTION */}
-          <Link href="/auth/login">
-            <Button
-              variant="outline"
-              className="h-10 rounded-full border-emerald-800 px-5 text-sm font-semibold text-emerald-900 transition hover:bg-emerald-50"
-            >
-              Ingresar / Registrarse
-            </Button>
-          </Link>
+{/* DESKTOP ACTION */}
+<Link href="/auth/login" className="hidden md:block">
+  <Button
+    variant="outline"
+    className="h-10 rounded-full border-emerald-800 px-5 text-sm font-semibold text-emerald-900 transition hover:bg-emerald-50"
+  >
+    Ingresar / Registrarse
+  </Button>
+</Link>
+
+{/* MOBILE MENU BUTTON */}
+<button
+  type="button"
+  onClick={() => setMobileMenuOpen(true)}
+  className="flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-200 text-zinc-700 md:hidden"
+  aria-label="Abrir menú"
+>
+  <Menu className="h-5 w-5" />
+</button>
 
         </div>
       </header>
+      {/* MOBILE MENU */}
+{mobileMenuOpen && (
+  <div className="fixed inset-0 z-[100] md:hidden">
+
+    <button
+      type="button"
+      aria-label="Cerrar menú"
+      onClick={() => setMobileMenuOpen(false)}
+      className="absolute inset-0 bg-black/30 backdrop-blur-sm"
+    />
+
+    <aside className="absolute right-0 top-0 flex h-full w-[82vw] max-w-sm flex-col bg-white shadow-2xl">
+
+      <div className="flex h-20 items-center justify-between border-b border-zinc-100 px-5">
+
+        <Link
+          href="/"
+          onClick={() => setMobileMenuOpen(false)}
+          className="text-xl font-bold tracking-tight text-zinc-950"
+        >
+          GrowCRM
+        </Link>
+
+        <button
+          type="button"
+          onClick={() => setMobileMenuOpen(false)}
+          className="flex h-10 w-10 items-center justify-center rounded-xl text-zinc-500 hover:bg-zinc-50"
+          aria-label="Cerrar menú"
+        >
+          <X className="h-5 w-5" />
+        </button>
+
+      </div>
+
+      <nav className="flex-1 space-y-2 overflow-y-auto p-5">
+
+        <p className="mb-4 text-xs font-semibold uppercase tracking-wider text-zinc-400">
+          Navegación
+        </p>
+
+        <Link
+          href="/funcionalidades"
+          onClick={() => setMobileMenuOpen(false)}
+          className="block rounded-xl px-4 py-3 text-base font-medium text-zinc-700 hover:bg-zinc-50"
+        >
+          Funcionalidades
+        </Link>
+
+        <Link
+          href="/club-partners"
+          onClick={() => setMobileMenuOpen(false)}
+          className="block rounded-xl bg-zinc-50 px-4 py-3 text-base font-semibold text-zinc-950"
+        >
+          Club Partners
+        </Link>
+
+        <Link
+          href="/precios"
+          onClick={() => setMobileMenuOpen(false)}
+          className="block rounded-xl px-4 py-3 text-base font-medium text-zinc-700 hover:bg-zinc-50"
+        >
+          Precios
+        </Link>
+
+        <div className="my-4 border-t border-zinc-100" />
+
+        <Link
+          href="/como-funciona"
+          onClick={() => setMobileMenuOpen(false)}
+          className="block rounded-xl px-4 py-3 text-base font-medium text-zinc-700 hover:bg-zinc-50"
+        >
+          Cómo funciona
+        </Link>
+
+        <Link
+          href="/contactanos"
+          onClick={() => setMobileMenuOpen(false)}
+          className="block rounded-xl px-4 py-3 text-base font-medium text-zinc-700 hover:bg-zinc-50"
+        >
+          Contáctanos
+        </Link>
+
+      </nav>
+
+      <div className="border-t border-zinc-100 p-5">
+
+        <Link
+          href="/auth/login"
+          onClick={() => setMobileMenuOpen(false)}
+          className="block"
+        >
+          <Button className="h-12 w-full rounded-full bg-emerald-900 font-semibold hover:bg-emerald-800">
+            Ingresar / Registrarse
+          </Button>
+        </Link>
+
+      </div>
+
+    </aside>
+
+  </div>
+)}
 
       {/* HERO */}
       <section className="relative overflow-hidden">
 
-        <div className="absolute -top-40 left-1/2 -z-10 h-[600px] w-[600px] -translate-x-1/2 rounded-full bg-emerald-100/60 blur-3xl" />
+<div className="absolute -top-52 left-1/2 -z-10 h-[600px] w-[600px] -translate-x-1/2 rounded-full bg-emerald-200/25 blur-[140px]" />
 
-        <div className="mx-auto max-w-4xl px-6 pb-20 pt-20 text-center md:pb-24 md:pt-28">
+<div className="absolute right-0 top-96 -z-10 h-[350px] w-[350px] rounded-full bg-blue-200/15 blur-[120px]" />
+        <div className="mx-auto max-w-4xl px-4 pb-14 pt-10 text-center sm:px-6 sm:pb-20 sm:pt-16 md:pb-24 md:pt-28">
 
           <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-emerald-50 px-4 py-2">
             <span className="h-2 w-2 rounded-full bg-emerald-500" />
@@ -139,7 +257,7 @@ export default function ClubPartnersPage() {
             </span>
           </div>
 
-          <h1 className="text-5xl font-black leading-[1.02] tracking-tight sm:text-6xl md:text-7xl">
+          <h1 className="text-4xl font-black leading-[1.02] tracking-tight sm:text-6xl md:text-7xl">
             Clubes que ya forman parte
             <br />
             <span className="text-emerald-700">
@@ -147,7 +265,7 @@ export default function ClubPartnersPage() {
             </span>
           </h1>
 
-          <p className="mx-auto mt-8 max-w-2xl text-lg leading-relaxed text-zinc-500 sm:text-xl">
+          <p className="mx-auto mt-6 max-w-2xl text-base leading-relaxed text-zinc-500 sm:mt-8 sm:text-xl">
             Conocé algunos de los clubes que utilizan GrowCRM para
             organizar su gestión y llevar su operación a un solo lugar.
           </p>
@@ -156,12 +274,12 @@ export default function ClubPartnersPage() {
       </section>
 
       {/* PARTNERS */}
-      <section className="bg-zinc-50/70 py-20 md:py-24">
+      <section className="bg-zinc-50/70 px-4 py-16 sm:px-6 sm:py-20 md:py-24">
 
-        <div className="mx-auto max-w-7xl px-6">
+        <div className="mx-auto max-w-7xl">
 
-          <div className="mb-12">
-            <h2 className="text-3xl font-bold tracking-tight md:text-4xl">
+<div className="mb-10 sm:mb-12">
+  <h2 className="text-2xl font-bold tracking-tight sm:text-3xl md:text-4xl">
               Clubes que confían en GrowCRM.
             </h2>
           </div>
@@ -175,7 +293,7 @@ export default function ClubPartnersPage() {
               >
 
                 {/* CARD HEADER */}
-                <div className="flex h-44 items-center justify-center bg-emerald-950">
+                <div className="flex h-36 items-center justify-center bg-emerald-950 sm:h-44">
 
                   <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-white/10 text-emerald-200 backdrop-blur">
                     <Users
@@ -187,7 +305,7 @@ export default function ClubPartnersPage() {
                 </div>
 
                 {/* CARD CONTENT */}
-                <div className="p-7">
+                <div className="p-5 sm:p-7">
 
                   <div className="mb-4 flex items-center justify-between gap-4">
                     <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800">
@@ -237,7 +355,7 @@ export default function ClubPartnersPage() {
       </section>
 
       {/* CTA */}
-      <section className="px-6 py-20">
+      <section className="px-4 py-16 sm:px-6 sm:py-20">
 
         <div className="mx-auto max-w-5xl border-t border-zinc-200 pt-12">
 
@@ -265,9 +383,9 @@ export default function ClubPartnersPage() {
               href="/solicitar-clubpartner"
               className="shrink-0"
             >
-              <Button
-                className="h-12 rounded-full bg-emerald-900 px-6 font-semibold text-white hover:bg-emerald-800"
-              >
+<Button
+  className="h-12 rounded-full bg-emerald-900 px-6 font-semibold text-white hover:bg-emerald-800"
+>
                 Quiero ser Club Partner
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
@@ -281,9 +399,9 @@ export default function ClubPartnersPage() {
       {/* FOOTER */}
       <footer className="border-t py-8">
 
-        <div className="mx-auto max-w-7xl px-6">
+<div className="mx-auto max-w-7xl px-4 sm:px-6">
 
-          <div className="flex items-center justify-between">
+  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 
             <p className="text-sm text-zinc-400">
               © {new Date().getFullYear()} GrowCRM

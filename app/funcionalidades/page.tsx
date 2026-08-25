@@ -1,5 +1,8 @@
+"use client"
+
+import { useState } from "react"
 import Link from "next/link"
-import { ChevronDown } from "lucide-react"
+import { ChevronDown, Menu, X } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -89,7 +92,10 @@ const features = [
 ]
 
 export default function FuncionalidadesPage() {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+
   return (
+
     <main className="min-h-screen bg-white text-zinc-950">
       {/* HEADER */}
 {/* NAV */}
@@ -170,8 +176,8 @@ export default function FuncionalidadesPage() {
 
     </nav>
 
-    {/* ACTION */}
-    <Link href="/auth/login">
+    {/* DESKTOP ACTION */}
+    <Link href="/auth/login" className="hidden md:block">
       <Button
         variant="outline"
         className="h-10 rounded-full border-emerald-800 px-5 text-sm font-semibold text-emerald-900 transition hover:bg-emerald-50"
@@ -180,9 +186,124 @@ export default function FuncionalidadesPage() {
       </Button>
     </Link>
 
+    {/* MOBILE MENU BUTTON */}
+    <button
+      type="button"
+      onClick={() => setMobileMenuOpen(true)}
+      className="flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-200 text-zinc-700 md:hidden"
+      aria-label="Abrir menú"
+    >
+      <Menu className="h-5 w-5" />
+    </button>
+
   </div>
 </header>
+{/* MOBILE MENU */}
+{mobileMenuOpen && (
+  <div className="fixed inset-0 z-[100] md:hidden">
 
+    {/* BACKDROP */}
+    <button
+      type="button"
+      aria-label="Cerrar menú"
+      onClick={() => setMobileMenuOpen(false)}
+      className="absolute inset-0 bg-black/30 backdrop-blur-sm"
+    />
+
+    {/* DRAWER */}
+    <aside className="absolute right-0 top-0 flex h-full w-[82vw] max-w-sm flex-col bg-white shadow-2xl">
+
+      {/* HEADER */}
+      <div className="flex h-20 items-center justify-between border-b border-zinc-100 px-5">
+
+        <Link
+          href="/"
+          onClick={() => setMobileMenuOpen(false)}
+          className="text-xl font-bold tracking-tight text-zinc-950"
+        >
+          GrowCRM
+        </Link>
+
+        <button
+          type="button"
+          onClick={() => setMobileMenuOpen(false)}
+          className="flex h-10 w-10 items-center justify-center rounded-xl text-zinc-500 hover:bg-zinc-50"
+          aria-label="Cerrar menú"
+        >
+          <X className="h-5 w-5" />
+        </button>
+
+      </div>
+
+      {/* NAV */}
+      <nav className="flex-1 space-y-2 overflow-y-auto p-5">
+
+        <p className="mb-4 text-xs font-semibold uppercase tracking-wider text-zinc-400">
+          Navegación
+        </p>
+
+        <Link
+          href="/funcionalidades"
+          onClick={() => setMobileMenuOpen(false)}
+          className="block rounded-xl bg-zinc-50 px-4 py-3 text-base font-medium text-zinc-950"
+        >
+          Funcionalidades
+        </Link>
+
+        <Link
+          href="/club-partners"
+          onClick={() => setMobileMenuOpen(false)}
+          className="block rounded-xl px-4 py-3 text-base font-medium text-zinc-700 hover:bg-zinc-50"
+        >
+          Club Partners
+        </Link>
+
+        <Link
+          href="/precios"
+          onClick={() => setMobileMenuOpen(false)}
+          className="block rounded-xl px-4 py-3 text-base font-medium text-zinc-700 hover:bg-zinc-50"
+        >
+          Precios
+        </Link>
+
+        <div className="my-4 border-t border-zinc-100" />
+
+        <Link
+          href="/como-funciona"
+          onClick={() => setMobileMenuOpen(false)}
+          className="block rounded-xl px-4 py-3 text-base font-medium text-zinc-700 hover:bg-zinc-50"
+        >
+          Cómo funciona
+        </Link>
+
+        <Link
+          href="/contactanos"
+          onClick={() => setMobileMenuOpen(false)}
+          className="block rounded-xl px-4 py-3 text-base font-medium text-zinc-700 hover:bg-zinc-50"
+        >
+          Contáctanos
+        </Link>
+
+      </nav>
+
+      {/* ACTION */}
+      <div className="border-t border-zinc-100 p-5">
+
+        <Link
+          href="/auth/login"
+          onClick={() => setMobileMenuOpen(false)}
+          className="block"
+        >
+          <Button className="h-12 w-full rounded-full bg-emerald-900 font-semibold hover:bg-emerald-800">
+            Ingresar / Registrarse
+          </Button>
+        </Link>
+
+      </div>
+
+    </aside>
+  </div>
+)}
       {/* HERO */}
       <section className="relative overflow-hidden">
         <div className="absolute -top-40 left-1/2 -z-10 h-[600px] w-[600px] -translate-x-1/2 rounded-full bg-emerald-100/60 blur-3xl" />

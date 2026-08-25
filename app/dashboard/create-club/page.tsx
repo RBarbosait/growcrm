@@ -166,32 +166,32 @@ if (
   }
 
   return (
-    <main className="min-h-screen bg-zinc-50 px-6 py-12">
+    <main className="min-h-screen bg-zinc-50 px-4 py-8 sm:px-6 sm:py-12">
       <div className="mx-auto w-full max-w-4xl">
 
         {/* VOLVER */}
         <button
           type="button"
           onClick={() => router.push("/dashboard")}
-          className="mb-8 flex items-center gap-2 text-sm font-medium text-zinc-500 transition hover:text-zinc-900"
+          className="mb-6 flex min-h-10 items-center gap-2 text-sm font-medium text-zinc-500 transition hover:text-zinc-900 sm:mb-8"
         >
           <ArrowLeft className="h-4 w-4" />
           Volver a mis clubes
         </button>
 
         {/* HEADER */}
-        <div className="mb-10 text-center">
+        <div className="mb-8 text-center sm:mb-10">
 
           <div className="mb-5 inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-700">
             Crear club
           </div>
 
-          <h1 className="text-4xl font-bold tracking-tight text-zinc-900">
+          <h1 className="text-3xl font-bold tracking-tight text-zinc-900 sm:text-4xl">
             Creá tu club
           </h1>
 
-          <p className="mx-auto mt-4 max-w-2xl text-lg leading-7 text-zinc-500">
-            Elegí el tipo de club y configurá la información básica
+<p className="mx-auto mt-3 max-w-2xl text-base leading-6 text-zinc-500 sm:mt-4 sm:text-lg sm:leading-7">
+              Elegí el tipo de club y configurá la información básica
             para comenzar.
           </p>
 
@@ -255,7 +255,7 @@ if (
 </section>
 
           {/* DATOS */}
-          <section className="rounded-3xl border border-zinc-200 bg-white p-8 shadow-sm">
+          <section className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm sm:p-8">
 
             <h2 className="text-xl font-bold text-zinc-900">
               Información del club
@@ -265,7 +265,7 @@ if (
               Estos datos podrán modificarse posteriormente.
             </p>
 
-            <div className="mt-7 space-y-6">
+            <div className="mt-6 space-y-5 sm:mt-7 sm:space-y-6">
 
               <div>
                 <label className="mb-2 block text-sm font-semibold text-zinc-700">
@@ -292,7 +292,7 @@ if (
                     setDescription(e.target.value)
                   }
                   placeholder="Contale a tus socios qué es este club..."
-                  className="min-h-[140px] rounded-xl resize-none"
+                  className="min-h-[120px] resize-none rounded-xl sm:min-h-[140px]"
                 />
               </div>
 
@@ -306,7 +306,7 @@ if (
 {/* REQUISITOS CANNABIS */}
 {templates.find((template) => template.id === selectedTemplate)?.slug ===
   "cannabis" && (
-  <div className="mt-8 rounded-2xl border border-amber-200 bg-amber-50 p-6">
+  <div className="mt-8 rounded-2xl border border-amber-200 bg-amber-50 p-4 sm:p-6">
 
     <h3 className="text-lg font-bold text-zinc-900">
       Requisitos para Club de Membresía Cannábico
@@ -317,7 +317,7 @@ if (
       con los requisitos legales y regulatorios aplicables.
     </p>
 
-    <div className="mt-5 max-h-80 overflow-y-auto rounded-xl border border-amber-200 bg-white p-5">
+    <div className="mt-5 max-h-72 overflow-y-auto rounded-xl border border-amber-200 bg-white p-4 sm:max-h-80 sm:p-5">
 
       <ul className="space-y-4 text-sm leading-6 text-zinc-700">
 
@@ -408,7 +408,7 @@ if (
       </ul>
     </div>
 
-    <label className="mt-5 flex cursor-pointer items-start gap-3">
+<label className="mt-5 flex cursor-pointer items-start gap-3">
 
       <input
         type="checkbox"
@@ -440,11 +440,11 @@ if (
   </div>
 )}
             <div className="mt-8 flex justify-end">
-              <Button
-                type="submit"
-                disabled={creating}
-                className="h-12 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-500 px-8 font-bold shadow-lg hover:from-emerald-700 hover:to-teal-600"
-              >
+  <Button
+    type="submit"
+    disabled={creating}
+    className="h-12 w-full rounded-xl bg-gradient-to-r from-emerald-600 to-teal-500 px-8 font-bold shadow-lg hover:from-emerald-700 hover:to-teal-600 sm:w-auto"
+  >
                 {creating
                   ? "Creando club..."
                   : "Crear club →"}

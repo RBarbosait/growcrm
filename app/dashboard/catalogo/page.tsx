@@ -374,7 +374,7 @@ attributes: product.attributes,
         {/* HEADER */}
 
         <header className="border-b border-zinc-100 bg-white">
-          <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-6">
+          <div className="mx-auto flex min-h-20 max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
 
             <div>
               <p className="text-sm font-medium text-emerald-700">
@@ -387,7 +387,7 @@ attributes: product.attributes,
             </div>
 
             <Link href="/dashboard/catalogo/nuevo">
-              <Button className="h-11 rounded-full bg-emerald-900 px-6 font-semibold text-white hover:bg-emerald-800">
+              <Button className="h-11 shrink-0 rounded-full bg-emerald-900 px-4 text-sm font-semibold text-white hover:bg-emerald-800 sm:px-6">
                 <Plus className="mr-2 h-4 w-4" />
                 Agregar producto
               </Button>
@@ -398,7 +398,7 @@ attributes: product.attributes,
 
         {/* CONTENT */}
 
-        <section className="mx-auto max-w-7xl px-6 py-8">
+        <section className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
 
           {/* BACK */}
 
@@ -412,7 +412,7 @@ attributes: product.attributes,
           {/* CLUB */}
 
           {club && (
-            <div className="mb-8 rounded-2xl border border-emerald-100 bg-emerald-50/60 px-5 py-4">
+            <div className="mb-6 rounded-2xl border border-emerald-100 bg-emerald-50/60 px-4 py-4 sm:mb-8 sm:px-5">
 
               <p className="text-xs font-semibold uppercase tracking-wider text-emerald-700">
                 Club
@@ -427,10 +427,10 @@ attributes: product.attributes,
 
           {/* TITLE + SEARCH */}
 
-          <div className="mb-10 flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
+          <div className="mb-8 flex flex-col gap-5 sm:mb-10 md:flex-row md:items-end md:justify-between">
 
             <div>
-              <h2 className="text-2xl font-bold tracking-tight">
+              <h2 className="text-xl font-bold tracking-tight sm:text-2xl">
                 Tu catálogo
               </h2>
 
@@ -566,7 +566,7 @@ attributes: product.attributes,
 
                         <div className="overflow-x-auto">
 
-                          <table className="w-full min-w-[950px]">
+                          <table className="w-full">
 
                             <thead className="border-b border-zinc-100 bg-zinc-50/70">
 
@@ -576,13 +576,13 @@ attributes: product.attributes,
                                   Producto
                                 </th>
 
-                                <th className="px-6 py-4">
-                                  Marca
-                                </th>
+                                <th className="hidden px-6 py-4 md:table-cell">
+  Marca
+</th>
 
-                                <th className="px-6 py-4">
-                                  Precio compra
-                                </th>
+<th className="hidden px-6 py-4 md:table-cell">
+  Precio compra
+</th>
 
                                 <th className="px-6 py-4">
                                   Precio venta
@@ -621,13 +621,13 @@ attributes: product.attributes,
 
                                       <td className="px-6 py-5">
 
-                                        <div className="flex items-center gap-3">
+                                        <div className="flex min-w-0 items-center gap-3">
 
                                           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-800">
                                             <Package className="h-5 w-5" />
                                           </div>
 
-                                          <div>
+                                          <div className="min-w-0">
 
                                             <p className="font-semibold text-zinc-950">
                                               {product.name}
@@ -645,11 +645,11 @@ attributes: product.attributes,
 
                                       </td>
 
-                                      <td className="px-6 py-5 text-sm text-zinc-600">
-                                        {product.brand || "—"}
+<td className="hidden px-6 py-5 text-sm text-zinc-600 md:table-cell">
+                                            {product.brand || "—"}
                                       </td>
 
-                                      <td className="px-6 py-5 text-sm text-zinc-600">
+<td className="hidden px-6 py-5 text-sm text-zinc-600 md:table-cell">
                                         {product.purchasePrice != null
                                           ? `$${product.purchasePrice.toLocaleString(
                                               "es-UY"
@@ -657,7 +657,7 @@ attributes: product.attributes,
                                           : "—"}
                                       </td>
 
-                                      <td className="px-6 py-5 text-sm font-semibold text-zinc-950">
+                                      <td className="px-3 py-4 text-sm font-semibold text-zinc-950 sm:px-6 sm:py-5">
                                         {product.salePrice != null
                                           ? `$${product.salePrice.toLocaleString(
                                               "es-UY"
@@ -665,36 +665,64 @@ attributes: product.attributes,
                                           : "—"}
                                       </td>
 
-                                      <td className="px-6 py-5">
+                                      <td className="px-3 py-4 sm:px-6 sm:py-5">
 
-                                        <div className="flex items-center gap-2">
+                                        <div className="w-24 sm:w-28">
 
-                                          <span
-                                            className={
-                                              lowStock
-                                                ? "font-semibold text-orange-600"
-                                                : "font-medium text-zinc-700"
-                                            }
-                                          >
-                                            {product.stock}
-                                          </span>
+  <div className="h-2 overflow-hidden rounded-full bg-zinc-100">
 
-                                          {lowStock && (
-                                            <AlertTriangle className="h-4 w-4 text-orange-500" />
-                                          )}
+    <div
+      className={`h-full rounded-full transition-all ${
+        lowStock
+          ? "bg-orange-400"
+          : "bg-emerald-600"
+      }`}
+      style={{
+        width: `${
+          product.minStock > 0
+            ? Math.min(
+                100,
+                Math.max(
+                  8,
+                  (product.stock /
+                    (product.minStock * 3)) *
+                    100
+                )
+              )
+            : product.stock > 0
+              ? 100
+              : 0
+        }%`,
+      }}
+    />
 
-                                        </div>
+  </div>
 
-                                        <p className="mt-0.5 text-xs text-zinc-400">
-                                          Mínimo:{" "}
-                                          {product.minStock}
-                                        </p>
+  <div className="mt-1.5 flex items-center gap-1">
+
+    {lowStock && (
+      <AlertTriangle className="h-3.5 w-3.5 text-orange-500" />
+    )}
+
+    <span
+      className={`text-xs font-medium ${
+        lowStock
+          ? "text-orange-600"
+          : "text-zinc-400"
+      }`}
+    >
+      {lowStock ? "Stock bajo" : "Disponible"}
+    </span>
+
+  </div>
+
+</div>
 
                                       </td>
 
-                                      <td className="px-6 py-5">
+                                      <td className="px-3 py-4 sm:px-6 sm:py-5">
 
-                                        <div className="flex justify-end gap-2">
+                                        <div className="flex justify-end gap-1 sm:gap-2">
 
                                           <Button
                                             type="button"
@@ -789,7 +817,7 @@ attributes: product.attributes,
   }
 }}
                                             disabled={deleting}
-                                            className="h-9 rounded-full px-4 text-sm"
+                                            className="h-9 rounded-full px-2 text-xs sm:px-4 sm:text-sm"
                                           >
                                             <Pencil className="mr-2 h-3.5 w-3.5" />
                                             Editar
@@ -804,8 +832,7 @@ attributes: product.attributes,
                                               )
                                             }
                                             disabled={deleting}
-                                            className="h-9 rounded-full border-red-200 px-4 text-sm text-red-600 hover:bg-red-50 hover:text-red-700"
-                                          >
+className="h-9 rounded-full border-red-200 px-2 text-xs text-red-600 hover:bg-red-50 hover:text-red-700 sm:px-4 sm:text-sm"                                          >
                                             <Trash2 className="mr-2 h-3.5 w-3.5" />
                                             {deleting
                                               ? "Eliminando..."
