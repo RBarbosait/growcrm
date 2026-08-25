@@ -135,11 +135,11 @@ return (
       type="button"
       aria-label="Cerrar menú"
       onClick={() => setMobileMenuOpen(false)}
-      className="absolute inset-0 bg-black/30 backdrop-blur-sm"
+      className="absolute inset-0 bg-black/30"
     />
 
     {/* DRAWER */}
-    <aside className="absolute right-0 top-0 flex h-full w-[82vw] max-w-sm flex-col bg-white shadow-2xl">
+    <aside className="absolute right-0 top-0 flex h-full w-[82vw] max-w-sm flex-col bg-white shadow-xl">
 
       {/* HEADER */}
       <div className="flex h-20 items-center justify-between border-b border-zinc-100 px-5">
