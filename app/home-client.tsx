@@ -25,9 +25,9 @@ return (
       {/* 🔥 BACKGROUND GLOW */}
 <div className="absolute inset-0 -z-10 overflow-hidden">
 
-  <div className="absolute -top-52 left-1/2 h-[700px] w-[700px] -translate-x-1/2 rounded-full bg-emerald-200/25 blur-[160px]" />
+<div className="absolute -top-52 left-1/2 -z-10 h-[700px] w-[700px] -translate-x-1/2 rounded-full bg-emerald-200/25 blur-none" />
 
-  <div className="absolute right-0 top-96 h-[400px] w-[400px] rounded-full bg-blue-200/20 blur-[140px]" />
+<div className="absolute right-0 top-96 h-[400px] w-[400px] rounded-full bg-blue-200/20 blur-none" />
 
 </div>
 {/* NAV */}
@@ -292,7 +292,7 @@ return (
   {/* DERECHA — MOCKUP */}
   <div className="relative">
 
-    <div className="absolute -top-20 left-1/2 -z-10 h-[500px] w-[500px] -translate-x-1/2 rounded-full bg-emerald-100/60 blur-3xl" />
+<div className="absolute -top-20 left-1/2 -z-10 h-[500px] w-[500px] -translate-x-1/2 rounded-full bg-emerald-100/60 blur-none" />
 
     <div className="relative overflow-hidden rounded-[28px] border border-zinc-200 bg-white shadow-2xl">
 
