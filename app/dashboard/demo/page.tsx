@@ -1,6 +1,6 @@
 "use client"
-import type React from "react"
 import { useState } from "react"
+import type { ElementType } from "react"
 import { useRouter } from "next/navigation"
 import {
   LayoutDashboard,
@@ -10,12 +10,14 @@ import {
   ShoppingCart,
   Bell,
   LogOut,
-  Leaf,
   ChevronRight,
   TrendingUp,
   AlertTriangle,
   UserPlus,
   CalendarCheck,
+  Menu,
+  X,
+  LayoutGrid,
 } from "lucide-react"
 
 const menuItems = [
@@ -76,54 +78,157 @@ const activity = [
 export default function DemoPage() {
   const router = useRouter()
   const [activeSection, setActiveSection] = useState("inicio")
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   return (
     <div className="min-h-screen bg-zinc-50 text-zinc-900">
 
-      {/* HEADER */}
-      <header className="sticky top-0 z-30 border-b border-zinc-200 bg-white/95 backdrop-blur">
-        <div className="flex h-16 items-center justify-between px-6">
+{/* HEADER */}
+<header className="sticky top-0 z-40 border-b border-zinc-200 bg-white/95 backdrop-blur">
+  <div className="flex h-16 items-center justify-between px-4 sm:px-6">
 
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-100">
-              <Leaf className="h-5 w-5 text-emerald-600" />
-            </div>
+    <div className="flex items-center gap-3">
+      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-800 text-sm font-bold text-white">
+        G
+      </div>
 
-            <div>
-              <p className="font-bold leading-none">
-                GrowCRM
-              </p>
-              <p className="mt-1 text-xs text-zinc-500">
-                Modo demostración
-              </p>
-            </div>
+      <div>
+        <p className="font-bold leading-none">
+          GrowCRM
+        </p>
+
+        <p className="mt-1 text-xs text-zinc-500">
+          Modo demostración
+        </p>
+      </div>
+    </div>
+
+    <div className="flex items-center gap-2 sm:gap-4">
+
+      <div className="hidden rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 sm:block">
+        DEMO
+      </div>
+
+      <button
+        type="button"
+        onClick={() => router.push("/dashboard")}
+        className="hidden items-center gap-2 rounded-xl px-3 py-2 text-sm text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-900 sm:flex"
+      >
+        <LogOut className="h-4 w-4" />
+        Salir
+      </button>
+
+      <button
+        type="button"
+        onClick={() => setMobileMenuOpen(true)}
+        className="flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-200 text-zinc-700 transition hover:bg-zinc-50 md:hidden"
+        aria-label="Abrir menú"
+      >
+        <Menu className="h-5 w-5" />
+      </button>
+
+    </div>
+  </div>
+</header>
+{/* MOBILE MENU */}
+{mobileMenuOpen && (
+  <div className="fixed inset-0 z-[100] md:hidden">
+
+    <button
+      type="button"
+      aria-label="Cerrar menú"
+      onClick={() => setMobileMenuOpen(false)}
+      className="absolute inset-0 bg-black/30"
+    />
+
+    <aside className="absolute right-0 top-0 flex h-full w-[82vw] max-w-sm flex-col bg-white shadow-xl">
+
+      <div className="flex h-16 items-center justify-between border-b border-zinc-100 px-5">
+
+        <div className="flex items-center gap-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-800 text-sm font-bold text-white">
+            G
           </div>
 
-          <div className="flex items-center gap-4">
-
-            <div className="hidden rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 sm:block">
-              DEMO
-            </div>
-
-            <button
-              onClick={() => router.push("/dashboard")}
-              className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-900"
-            >
-              <LogOut className="h-4 w-4" />
-              Salir
-            </button>
-
-          </div>
+          <span className="font-bold">
+            GrowCRM
+          </span>
         </div>
-      </header>
+
+        <button
+          type="button"
+          onClick={() => setMobileMenuOpen(false)}
+          className="flex h-10 w-10 items-center justify-center rounded-xl text-zinc-500 hover:bg-zinc-50"
+          aria-label="Cerrar menú"
+        >
+          <X className="h-5 w-5" />
+        </button>
+
+      </div>
+
+      <nav className="flex-1 space-y-1 overflow-y-auto p-4">
+
+        <p className="mb-3 px-3 text-xs font-semibold uppercase tracking-wider text-zinc-400">
+          Demo
+        </p>
+
+        {menuItems.map((item) => {
+          const Icon = item.icon
+          const active = activeSection === item.key
+
+          return (
+            <button
+              key={item.key}
+              type="button"
+              onClick={() => {
+                setActiveSection(item.key)
+                setMobileMenuOpen(false)
+              }}
+              className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition ${
+                active
+                  ? "bg-emerald-50 text-emerald-700"
+                  : "text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900"
+              }`}
+            >
+              <Icon className="h-4 w-4" />
+              {item.label}
+            </button>
+          )
+        })}
+
+        <button
+          type="button"
+          onClick={() => setMobileMenuOpen(false)}
+          className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm text-zinc-600 hover:bg-zinc-50"
+        >
+          <Bell className="h-4 w-4" />
+          Avisos
+        </button>
+
+      </nav>
+
+      <div className="border-t border-zinc-100 p-4">
+        <button
+          type="button"
+          onClick={() => router.push("/dashboard")}
+          className="flex w-full items-center justify-center gap-2 rounded-xl border border-zinc-200 px-4 py-3 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
+        >
+          <LogOut className="h-4 w-4" />
+          Salir de la demo
+        </button>
+      </div>
+
+    </aside>
+  </div>
+)}
 
       <div className="flex">
 
         {/* SIDEBAR */}
-        <aside className="hidden min-h-[calc(100vh-64px)] w-64 border-r border-zinc-200 bg-white p-4 md:block">
+        <aside className="hidden min-h-[calc(100vh-64px)] w-64 shrink-0 border-r border-zinc-200 bg-white p-4 md:block">
 
-          <div className="mb-6 rounded-2xl border border-emerald-100 bg-emerald-50/70 p-4">
-            <p className="text-xs font-medium uppercase tracking-wide text-emerald-600">
+          <div className="mb-6 rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
               Club demo
             </p>
 
@@ -170,7 +275,7 @@ export default function DemoPage() {
         </aside>
 
         {/* MAIN */}
-        <main className="flex-1 p-6 md:p-8">
+        <main className="min-w-0 flex-1 p-4 sm:p-6 md:p-8">
 
           {/* TOP */}
           <div className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
@@ -182,7 +287,7 @@ export default function DemoPage() {
                 <span>Inicio</span>
               </div>
 
-              <h1 className="text-3xl font-bold tracking-tight">
+              <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
                 Green House Club
               </h1>
 
@@ -234,7 +339,7 @@ export default function DemoPage() {
           <div className="mt-8 grid gap-6 lg:grid-cols-3">
 
             {/* ACTIVITY */}
-            <section className="rounded-2xl border border-zinc-200 bg-white lg:col-span-2">
+            <section className="rounded-3xl border border-zinc-200 bg-white lg:col-span-2">
 
               <div className="border-b border-zinc-100 p-6">
                 <h2 className="font-bold">
@@ -282,7 +387,7 @@ export default function DemoPage() {
             </section>
 
             {/* QUICK VIEW */}
-            <section className="rounded-2xl border border-zinc-200 bg-white">
+            <section className="rounded-3xl border border-zinc-200 bg-white">
 
               <div className="border-b border-zinc-100 p-6">
                 <h2 className="font-bold">
@@ -324,7 +429,7 @@ export default function DemoPage() {
           </div>
 
           {/* DEMO CTA */}
-          <div className="mt-8 rounded-2xl border border-emerald-200 bg-gradient-to-r from-emerald-50 to-teal-50 p-6 md:p-8">
+          <div className="mt-8 rounded-3xl border border-emerald-200 bg-emerald-50/70 p-6 md:p-8">
 
             <div className="flex flex-col justify-between gap-6 md:flex-row md:items-center">
 
@@ -345,8 +450,7 @@ export default function DemoPage() {
 
               <button
                 onClick={() => router.push("/dashboard/create-club")}
-                className="shrink-0 rounded-xl bg-emerald-600 px-6 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-700"
-              >
+className="shrink-0 rounded-full bg-emerald-900 px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-800"              >
                 Crear mi club →
               </button>
 
@@ -369,10 +473,10 @@ function StatCard({
   title: string
   value: string
   description: string
-  icon: React.ElementType
+  icon: ElementType
 }) {
   return (
-    <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+    <div className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm">
 
       <div className="flex items-start justify-between">
         <div>
