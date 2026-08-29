@@ -57,6 +57,7 @@ type Product = {
   minStock: number
   provider: string | null
   description: string | null
+  attributes?: Record<string, unknown> | null
   createdAt: string
 }
 
@@ -78,10 +79,13 @@ const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
 
-  const [editingProduct, setEditingProduct] =
-    useState<Product | null>(null)
+const [editingProduct, setEditingProduct] =
+  useState<Product | null>(null)
 
-  const [saving, setSaving] = useState(false)
+const [viewingProduct, setViewingProduct] =
+  useState<Product | null>(null)
+
+const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     loadCatalog()
@@ -230,6 +234,9 @@ setShowClubSelector(true)
 
             description:
               updatedProduct.description,
+              
+              attributes:
+  updatedProduct.attributes,
           }),
         }
       )
@@ -886,12 +893,15 @@ setShowClubSelector(true)
                 {filteredProducts.map(
                   (product) => (
                     <ProductCard
-                      key={product.id}
-                      product={product}
-                      onEdit={() =>
-                        setEditingProduct(product)
-                      }
-                    />
+  key={product.id}
+  product={product}
+  onEdit={() =>
+    setEditingProduct(product)
+  }
+  onView={() =>
+    setViewingProduct(product)
+  }
+/>
                   )
                 )}
 
@@ -928,21 +938,86 @@ setShowClubSelector(true)
 
       {/* EDIT MODAL */}
 
-      {editingProduct && (
+{editingProduct && (
 
-        <EditProductModal
-          product={editingProduct}
-          saving={saving}
-          onClose={() =>
-            setEditingProduct(null)
-          }
-          onSave={handleSaveProduct}
-        />
+  <EditProductModal
+    product={editingProduct}
+    saving={saving}
+    onClose={() =>
+      setEditingProduct(null)
+    }
+    onSave={handleSaveProduct}
+  />
 
-      )}
+)}
+
+{viewingProduct && (
+
+  <ProductDetailModal
+    product={viewingProduct}
+    onClose={() =>
+      setViewingProduct(null)
+    }
+  />
+
+)}
 
     </div>
   )
+}
+
+
+function getCommercialTag(
+  attributes?: Record<string, unknown> | null
+) {
+  const tag = attributes?.commercialTag
+
+  if (
+    tag !== "nuevo" &&
+    tag !== "mas_vendido" &&
+    tag !== "recomendado" &&
+    tag !== "destacado" &&
+    tag !== "oferta"
+  ) {
+    return null
+  }
+
+  switch (tag) {
+    case "nuevo":
+      return {
+        label: "Nuevo",
+        className:
+          "bg-white/95 text-emerald-800 border border-emerald-100",
+      }
+
+    case "mas_vendido":
+      return {
+        label: "Más vendido",
+        className:
+          "bg-white/95 text-zinc-900 border border-zinc-200",
+      }
+
+    case "recomendado":
+      return {
+        label: "Recomendado",
+        className:
+          "bg-white/95 text-blue-700 border border-blue-100",
+      }
+
+    case "destacado":
+      return {
+        label: "Destacado",
+        className:
+          "bg-white/95 text-purple-700 border border-purple-100",
+      }
+
+    case "oferta":
+      return {
+        label: "Oferta",
+        className:
+          "bg-white/95 text-red-700 border border-red-100",
+      }
+  }
 }
 
 /* =============================================================== */
@@ -952,56 +1027,177 @@ setShowClubSelector(true)
 function ProductCard({
   product,
   onEdit,
+  onView,
 }: {
   product: Product
   onEdit: () => void
+  onView: () => void
 }) {
-  const lowStock =
-    product.stock <= product.minStock
+  const stock = Number(product.stock) || 0
+  const minStock = Number(product.minStock) || 0
+
+  // =========================
+  // ESTADOS DE STOCK
+  // =========================
+
+  const isOutOfStock = stock <= 0
+
+  // Independiente del stock mínimo.
+  // Si quedan 5 unidades o menos, está por agotarse.
+  const isNearEmpty =
+    stock > 0 &&
+    stock <= 5
+
+  // Por debajo o igual al mínimo configurado.
+  // Solo aplica después de "Por agotarse".
+  const isLowStock =
+    stock > 5 &&
+    minStock > 0 &&
+    stock <= minStock
+
+  // Está por encima del mínimo,
+  // pero todavía cerca de alcanzarlo.
+  const isNearMinimum =
+    minStock > 0 &&
+    stock > minStock &&
+    stock <= minStock * 1.25
+
+  const stockStatus =
+    isOutOfStock
+      ? "Agotado"
+      : isNearEmpty
+        ? "Por agotarse"
+        : isLowStock
+          ? "Stock bajo"
+          : isNearMinimum
+            ? "Cerca del mínimo"
+            : "Stock"
+
+  // =========================
+  // COLOR
+  // =========================
+
+  const stockColor =
+    isOutOfStock
+      ? "bg-red-500"
+      : isNearEmpty
+        ? "bg-orange-500"
+        : isLowStock
+          ? "bg-amber-500"
+          : isNearMinimum
+            ? "bg-yellow-500"
+            : "bg-emerald-600"
+
+  const stockTextColor =
+    isOutOfStock
+      ? "text-red-600"
+      : isNearEmpty
+        ? "text-orange-600"
+        : isLowStock
+          ? "text-amber-600"
+          : isNearMinimum
+            ? "text-yellow-700"
+            : "text-emerald-700"
+
+  // =========================
+  // BARRA
+  // =========================
+  //
+  // La barra representa stock real respecto
+  // de una escala razonable.
+  //
+  // Si hay stock mínimo:
+  // usamos 125% del mínimo como referencia.
+  //
+  // Si no hay stock mínimo:
+  // usamos 5 unidades como referencia,
+  // porque "Por agotarse" termina en 5.
+
+// =====================================================
+// BARRA DE STOCK
+// =====================================================
+//
+// La barra no pretende mostrar un "porcentaje real"
+// de inventario porque el producto no tiene capacidad
+// máxima definida.
+//
+// Representa el stock actual dentro de una escala
+// basada en el stock mínimo:
+//
+//   0              = 0%
+//   stock mínimo   = 50%
+//   2x stock mínimo = 100%
+//
+// Si no hay stock mínimo configurado usamos 10
+// unidades como referencia visual.
+//
+
+const stockScaleMax =
+  minStock > 0
+    ? minStock * 2
+    : 10
+
+const stockBarWidth =
+  stockScaleMax > 0
+    ? Math.min(
+        (stock / stockScaleMax) * 100,
+        100
+      )
+    : 0
+
+  // =========================
+  // ETIQUETA COMERCIAL
+  // =========================
+
+const commercialTag = getCommercialTag(product.attributes)
 
   return (
-    <Card className="group overflow-hidden rounded-3xl border-zinc-200 shadow-none transition hover:-translate-y-1 hover:shadow-xl">
+    <Card
+      onClick={onView}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(event) => {
+        if (
+          event.key === "Enter" ||
+          event.key === " "
+        ) {
+          event.preventDefault()
+          onView()
+        }
+      }}
+      className="group cursor-pointer overflow-hidden rounded-3xl border-zinc-200 shadow-none transition hover:-translate-y-1 hover:shadow-xl"
+    >
+      {/* IMAGEN */}
 
-      {/* IMAGE */}
+      <div className="relative h-44 overflow-hidden bg-zinc-100 sm:h-52">
 
-<div className="relative h-44 overflow-hidden bg-zinc-100 sm:h-52">
-        {product.imageUrl ? (
+{product.imageUrl ? (
+  <img
+    src={product.imageUrl}
+    alt={product.name}
+    className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+  />
+) : (
+  <ProductImageFallback
+    category={product.category}
+  />
+)}
 
-          <img
-            src={product.imageUrl}
-            alt={product.name}
-            className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
-          />
 
-        ) : (
+{commercialTag && (
+  <div className="absolute right-4 top-4">
+    <span
+      className={`rounded-full px-3 py-1.5 text-xs font-semibold shadow-sm backdrop-blur ${commercialTag.className}`}
+    >
+      {commercialTag.label}
+    </span>
+  </div>
+)}
 
-          <ProductImageFallback
-            category={product.category}
-          />
+</div>
 
-        )}
+{/* CONTENIDO */}
 
-        {/* STOCK BADGE */}
-
-        <div className="absolute right-4 top-4">
-
-          <span
-            className={`rounded-full px-3 py-1.5 text-xs font-semibold shadow-sm ${
-              lowStock
-                ? "bg-amber-50 text-amber-700"
-                : "bg-white/95 text-zinc-700"
-            }`}
-          >
-            {lowStock
-              ? "Stock bajo"
-              : `${product.stock} en stock`}
-          </span>
-
-        </div>
-
-      </div>
-
-      {/* CONTENT */}
 
       <CardContent className="p-6">
 
@@ -1027,9 +1223,14 @@ function ProductCard({
 
           </div>
 
+          {/* EDITAR */}
+
           <button
             type="button"
-            onClick={onEdit}
+            onClick={(event) => {
+              event.stopPropagation()
+              onEdit()
+            }}
             className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-zinc-200 text-zinc-500 transition hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-800"
             title="Editar producto"
           >
@@ -1038,9 +1239,9 @@ function ProductCard({
 
         </div>
 
-        {/* PRICE */}
+        {/* PRECIO + STOCK */}
 
-        <div className="mt-6 flex items-end justify-between border-t border-zinc-100 pt-5">
+        <div className="mt-6 grid grid-cols-2 items-end gap-6 border-t border-zinc-100 pt-5">
 
           <div>
 
@@ -1050,29 +1251,34 @@ function ProductCard({
 
             <p className="mt-1 text-2xl font-bold">
               {product.salePrice != null
-                ? `$${product.salePrice.toLocaleString(
-                    "es-UY"
-                  )}`
+                ? `$${product.salePrice.toLocaleString("es-UY")}`
                 : "—"}
             </p>
 
           </div>
 
-          <div className="text-right">
+          <div>
 
-            <p className="text-xs text-zinc-400">
-              Stock
-            </p>
+            <div className="flex items-center justify-end">
 
-            <p
-              className={`mt-1 text-lg font-bold ${
-                lowStock
-                  ? "text-amber-600"
-                  : "text-zinc-800"
-              }`}
-            >
-              {product.stock}
-            </p>
+              <p
+                className={`text-xs font-semibold ${stockTextColor}`}
+              >
+                {stockStatus}
+              </p>
+
+            </div>
+
+            <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-zinc-100">
+
+              <div
+                className={`h-full rounded-full transition-all ${stockColor}`}
+                style={{
+                  width: `${stockBarWidth}%`,
+                }}
+              />
+
+            </div>
 
           </div>
 
@@ -1109,6 +1315,373 @@ function ProductImageFallback({
       <p className="mt-4 text-xs font-semibold uppercase tracking-wider text-zinc-400">
         {category || "Producto"}
       </p>
+
+    </div>
+  )
+}
+/* =============================================================== */
+/* interpretar el pentagrama */
+/* =============================================================== */
+
+/* =============================================================== */
+/* PRODUCT PENTAGRAM */
+/* =============================================================== */
+
+function ProductPentagram({
+  values,
+}: {
+  values: {
+    potencia: number
+    euforia: number
+    energia: number
+    relajacion: number
+    sociabilidad: number
+  }
+}) {
+  const size = 280
+  const center = size / 2
+  const radius = 88
+
+  const axes = [
+    {
+      key: "potencia",
+      label: "Potencia",
+      angle: -90,
+    },
+    {
+      key: "euforia",
+      label: "Euforia",
+      angle: -18,
+    },
+    {
+      key: "energia",
+      label: "Energía",
+      angle: 54,
+    },
+    {
+      key: "relajacion",
+      label: "Relajación",
+      angle: 126,
+    },
+    {
+      key: "sociabilidad",
+      label: "Sociabilidad",
+      angle: 198,
+    },
+  ] as const
+
+  function getPoint(angle: number, distance: number) {
+    const radians = (angle * Math.PI) / 180
+
+    return {
+      x: center + Math.cos(radians) * distance,
+      y: center + Math.sin(radians) * distance,
+    }
+  }
+
+  function getPolygonPoints(distance: number) {
+    return axes
+      .map((axis) => {
+        const point = getPoint(axis.angle, distance)
+
+        return `${point.x},${point.y}`
+      })
+      .join(" ")
+  }
+
+  const profilePoints = axes
+    .map((axis) => {
+      const value = Math.max(
+        0,
+        Math.min(5, values[axis.key])
+      )
+
+      const point = getPoint(
+        axis.angle,
+        (value / 5) * radius
+      )
+
+      return `${point.x},${point.y}`
+    })
+    .join(" ")
+
+  return (
+    <div className="w-full max-w-md">
+      <svg
+        viewBox={`0 0 ${size} ${size}`}
+        className="h-auto w-full overflow-visible"
+      >
+        {/* NIVELES DEL PENTAGRAMA */}
+
+        {[1, 2, 3, 4, 5].map((level) => (
+          <polygon
+            key={level}
+            points={getPolygonPoints(
+              (radius / 5) * level
+            )}
+            fill="none"
+            stroke="#e4e4e7"
+            strokeWidth="1"
+          />
+        ))}
+
+        {/* EJES */}
+
+        {axes.map((axis) => {
+          const point = getPoint(
+            axis.angle,
+            radius
+          )
+
+          return (
+            <line
+              key={axis.key}
+              x1={center}
+              y1={center}
+              x2={point.x}
+              y2={point.y}
+              stroke="#e4e4e7"
+              strokeWidth="1"
+            />
+          )
+        })}
+
+        {/* PERFIL */}
+
+        <polygon
+          points={profilePoints}
+          fill="rgba(5, 150, 105, 0.16)"
+          stroke="#059669"
+          strokeWidth="2.5"
+          strokeLinejoin="round"
+        />
+
+        {/* PUNTOS */}
+
+        {axes.map((axis) => {
+          const value = Math.max(
+            0,
+            Math.min(5, values[axis.key])
+          )
+
+          const point = getPoint(
+            axis.angle,
+            (value / 5) * radius
+          )
+
+          return (
+            <circle
+              key={axis.key}
+              cx={point.x}
+              cy={point.y}
+              r="4"
+              fill="white"
+              stroke="#059669"
+              strokeWidth="2"
+            />
+          )
+        })}
+
+        {/* ETIQUETAS */}
+
+        {axes.map((axis) => {
+          const point = getPoint(
+            axis.angle,
+            radius + 30
+          )
+
+          let textAnchor:
+            | "start"
+            | "middle"
+            | "end" = "middle"
+
+          if (point.x < center - 10) {
+            textAnchor = "end"
+          }
+
+          if (point.x > center + 10) {
+            textAnchor = "start"
+          }
+
+          return (
+            <text
+              key={axis.key}
+              x={point.x}
+              y={point.y}
+              textAnchor={textAnchor}
+              dominantBaseline="middle"
+              className="fill-zinc-600 text-[11px] font-semibold"
+            >
+              {axis.label}
+            </text>
+          )
+        })}
+      </svg>
+    </div>
+  )
+}
+/* =============================================================== */
+/* VIEW PRODUCT MODAL */
+/* =============================================================== */
+
+
+function ProductDetailModal({
+  product,
+  onClose,
+}: {
+  product: Product
+  onClose: () => void
+}) {
+const stock = Number(product.stock) || 0
+const minStock = Number(product.minStock) || 0
+
+const isOutOfStock = stock <= 0
+
+const isNearEmpty =
+  stock > 0 &&
+  stock <= 5
+
+const isLowStock =
+  stock > 5 &&
+  minStock > 0 &&
+  stock <= minStock
+
+const isNearMinimum =
+  minStock > 0 &&
+  stock > minStock &&
+  stock <= minStock * 1.25
+
+const stockStatus =
+  isOutOfStock
+    ? "Agotado"
+    : isNearEmpty
+      ? "Por agotarse"
+      : isLowStock
+        ? "Stock bajo"
+        : isNearMinimum
+          ? "Cerca del mínimo"
+          : "Stock"
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+
+      <button
+        type="button"
+        aria-label="Cerrar"
+        onClick={onClose}
+        className="absolute inset-0 bg-black/30 backdrop-blur-sm"
+      />
+
+      <div className="relative z-10 max-h-[94vh] w-full max-w-2xl overflow-y-auto rounded-[28px] bg-white shadow-2xl">
+
+        {/* IMAGEN */}
+
+        <div className="relative h-64 overflow-hidden bg-zinc-100 sm:h-80">
+
+          {product.imageUrl ? (
+            <img
+              src={product.imageUrl}
+              alt={product.name}
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <ProductImageFallback
+              category={product.category}
+            />
+          )}
+
+          <button
+            type="button"
+            onClick={onClose}
+            className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/95 text-zinc-500 shadow-sm"
+          >
+            <X className="h-5 w-5" />
+          </button>
+
+
+
+        </div>
+
+        {/* CONTENIDO */}
+
+        <div className="p-6 sm:p-8">
+
+          {product.category && (
+            <p className="text-xs font-semibold uppercase tracking-wider text-emerald-700">
+              {product.category}
+            </p>
+          )}
+
+          <h2 className="mt-2 text-3xl font-bold tracking-tight">
+            {product.name}
+          </h2>
+
+          {product.brand && (
+            <p className="mt-1 text-sm text-zinc-500">
+              {product.brand}
+            </p>
+          )}
+
+          <div className="mt-6 border-t border-zinc-100 pt-6">
+
+            <p className="text-sm text-zinc-400">
+              Precio
+            </p>
+
+            <p className="mt-1 text-3xl font-bold text-zinc-950">
+              {product.salePrice != null
+                ? `$${product.salePrice.toLocaleString("es-UY")}`
+                : "Consultar"}
+            </p>
+
+          </div>
+
+          {product.description && (
+            <div className="mt-6">
+
+              <h3 className="text-sm font-semibold">
+                Descripción
+              </h3>
+
+              <p className="mt-2 text-sm leading-relaxed text-zinc-600">
+                {product.description}
+              </p>
+
+            </div>
+          )}
+
+          {/* PENTAGRAMA */}
+
+          {product.category?.toLowerCase() ===
+            "flor de marihuana" && (
+            <div className="mt-8 border-t border-zinc-100 pt-8">
+
+              <h3 className="text-lg font-bold">
+                Perfil de la flor
+              </h3>
+
+              <p className="mt-1 text-sm text-zinc-500">
+                Características del producto
+              </p>
+
+              <div className="mt-6 flex justify-center">
+<ProductPentagram
+  values={{
+    potencia: Number(product.attributes?.potencia) || 0,
+    euforia: Number(product.attributes?.euforia) || 0,
+    energia: Number(product.attributes?.energia) || 0,
+    relajacion: Number(product.attributes?.relajacion) || 0,
+    sociabilidad: Number(product.attributes?.sociabilidad) || 0,
+  }}
+/>
+              </div>
+
+            </div>
+          )}
+
+        </div>
+
+      </div>
 
     </div>
   )
@@ -1309,6 +1882,40 @@ className="space-y-6 p-4 sm:p-6"        >
             />
 
           </div>
+          {/* ETIQUETA COMERCIAL */}
+
+<div>
+  <label className="text-sm font-semibold">
+    Etiqueta comercial
+  </label>
+
+  <select
+    value={
+      typeof form.attributes?.commercialTag === "string"
+        ? form.attributes.commercialTag
+        : ""
+    }
+    onChange={(e) => {
+      const value = e.target.value
+
+      setForm((current) => ({
+        ...current,
+        attributes: {
+          ...(current.attributes || {}),
+          commercialTag: value || null,
+        },
+      }))
+    }}
+    className="mt-2 h-11 w-full rounded-xl border border-zinc-200 bg-white px-4 text-sm outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
+  >
+    <option value="">Sin etiqueta</option>
+    <option value="nuevo">Nuevo</option>
+    <option value="mas_vendido">Más vendido</option>
+    <option value="recomendado">Recomendado</option>
+    <option value="destacado">Destacado</option>
+    <option value="oferta">Oferta</option>
+  </select>
+</div>
 
           {/* PRICES */}
 
@@ -1346,33 +1953,91 @@ className="space-y-6 p-4 sm:p-6"        >
 
           </div>
 
-          {/* STOCK */}
+{/* STOCK */}
 
-          <div className="grid gap-4 md:grid-cols-2">
+<div className="space-y-4">
 
-            <NumberField
-              label="Stock"
-              value={form.stock}
-              onChange={(value) =>
-                updateField(
-                  "stock",
-                  Number(value)
-                )
-              }
-            />
+  <div className="grid gap-4 md:grid-cols-2">
 
-            <NumberField
-              label="Stock mínimo"
-              value={form.minStock}
-              onChange={(value) =>
-                updateField(
-                  "minStock",
-                  Number(value)
-                )
-              }
-            />
+    <NumberField
+      label="Stock"
+      value={form.stock}
+      onChange={(value) =>
+        updateField(
+          "stock",
+          Number(value)
+        )
+      }
+    />
 
-          </div>
+    <NumberField
+      label="Stock mínimo"
+      value={form.minStock}
+      onChange={(value) =>
+        updateField(
+          "minStock",
+          Number(value)
+        )
+      }
+    />
+
+  </div>
+
+  <div>
+
+    <label className="text-sm font-semibold">
+      Unidad de stock
+    </label>
+
+    <select
+      value={
+        typeof form.attributes?.stockUnit === "string"
+          ? form.attributes.stockUnit
+          : ""
+      }
+      onChange={(e) => {
+        const value = e.target.value
+
+        setForm((current) => ({
+          ...current,
+          attributes: {
+            ...(current.attributes || {}),
+            stockUnit: value,
+          },
+        }))
+      }}
+      className="mt-2 h-11 w-full rounded-xl border border-zinc-200 bg-white px-4 text-sm outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
+    >
+
+      <option value="">
+        Seleccioná una unidad
+      </option>
+
+      <option value="g">
+        Gramos (g)
+      </option>
+
+      <option value="kg">
+        Kilogramos (kg)
+      </option>
+
+      <option value="ml">
+        Mililitros (ml)
+      </option>
+
+      <option value="l">
+        Litros (l)
+      </option>
+
+      <option value="unidad">
+        Unidades
+      </option>
+
+    </select>
+
+  </div>
+
+</div>
 
           {/* PROVIDER */}
 

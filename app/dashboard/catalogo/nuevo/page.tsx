@@ -424,41 +424,125 @@ export default function NuevoProductoPage() {
 
               </div>
 
-              {/* DYNAMIC ATTRIBUTES */}
+{/* DYNAMIC ATTRIBUTES */}
 
-              {selectedCategory && (
-                <div className="space-y-5 border-t border-zinc-100 pt-5 sm:space-y-6 sm:pt-6">
+{selectedCategory && (
+  <div className="space-y-6 border-t border-zinc-100 pt-6">
 
-                  {selectedCategory.attributes
-                    .slice()
-                    .sort(
-                      (a, b) =>
-                        a.sortOrder -
-                        b.sortOrder
-                    )
-                    .map((attribute) => (
+    {selectedCategory.attributes
+      .slice()
+      .sort(
+        (a, b) =>
+          a.sortOrder -
+          b.sortOrder
+      )
+      .map((attribute) => (
 
-                      <DynamicField
-                        key={attribute.id}
-                        attribute={attribute}
-                        value={
-                          formValues[
-                            attribute.slug
-                          ]
-                        }
-                        onChange={(value) =>
-                          handleChange(
-                            attribute.slug,
-                            value
-                          )
-                        }
-                      />
+        <DynamicField
+          key={attribute.id}
+          attribute={attribute}
+          value={
+            formValues[
+              attribute.slug
+            ]
+          }
+          onChange={(value) =>
+            handleChange(
+              attribute.slug,
+              value
+            )
+          }
+        />
 
-                    ))}
+      ))}
 
-                </div>
-              )}
+    {/* STOCK */}
 
+    <div className="border-t border-zinc-100 pt-6">
+
+      <div className="mb-3">
+        <label className="block text-sm font-medium text-zinc-700">
+          Stock inicial
+        </label>
+
+        <p className="mt-1 text-xs text-zinc-400">
+          Podés dejarlo vacío y completarlo más adelante.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+
+        <input
+          type="number"
+          min="0"
+          step="0.01"
+          value={
+            typeof formValues.stock === "number"
+              ? formValues.stock
+              : ""
+          }
+          onChange={(e) =>
+            handleChange(
+              "stock",
+              e.target.value === ""
+                ? ""
+                : Number(e.target.value)
+            )
+          }
+          placeholder="Cantidad"
+          className="h-12 w-full rounded-xl border border-zinc-200 bg-white px-4 text-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+        />
+
+        <select
+          value={
+            typeof formValues.stockUnit === "string"
+              ? formValues.stockUnit
+              : ""
+          }
+          onChange={(e) =>
+            handleChange(
+              "stockUnit",
+              e.target.value
+            )
+          }
+          className="h-12 w-full rounded-xl border border-zinc-200 bg-white px-4 text-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+        >
+          <option value="">
+            Seleccioná una unidad
+          </option>
+
+          <option value="g">
+            Gramos (g)
+          </option>
+
+          <option value="kg">
+            Kilogramos (kg)
+          </option>
+
+          <option value="ml">
+            Mililitros (ml)
+          </option>
+
+          <option value="l">
+            Litros (l)
+          </option>
+
+          <option value="unidad">
+            Unidades
+          </option>
+        </select>
+
+      </div>
+
+      <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        <strong>Recordatorio:</strong> para publicar este producto necesitás
+        definir el stock y la unidad.
+      </div>
+
+    </div>
+
+  </div>
+)}
               {/* ERROR */}
 
               {error && (
