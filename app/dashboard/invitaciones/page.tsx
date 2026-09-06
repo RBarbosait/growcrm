@@ -1,6 +1,6 @@
 "use client";
+import { useEffect, useState } from "react";
 
-import { useState } from "react";
 import {
   ArrowLeft,
   Check,
@@ -25,7 +25,21 @@ export default function InvitacionesPage() {
   const [showEmailForm, setShowEmailForm] = useState(false);
   const [recipients, setRecipients] = useState("");
 
-const invitationUrl = "/invitacion/demo";
+const [clubId, setClubId] = useState<string | null>(null);
+
+useEffect(() => {
+  const storedClubId = localStorage.getItem(
+    "growcrm_active_club_id"
+  );
+
+  if (storedClubId) {
+    setClubId(storedClubId);
+  }
+}, []);
+
+const invitationUrl = clubId
+  ? `${window.location.origin}/invitacion/demo?clubId=${encodeURIComponent(clubId)}`
+  : "";
 
   const handleCopy = async () => {
     try {
