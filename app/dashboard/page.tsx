@@ -399,113 +399,84 @@ setShowClubSelector(true)
 
           {/* NAVIGATION */}
 
-          <nav className="flex-1 space-y-1 px-4">
+{/* NAVIGATION */}
 
-            <DashboardNavItem
-              icon={BarChart3}
-              label="Inicio"
-              onClick={() =>
-                (window.location.href =
-                  "/dashboard")
-              }
-            />
+<nav className="flex-1 space-y-1 px-4">
 
-            <DashboardNavItem
-              icon={Users}
-              label="Socios"
-              onClick={() =>
-                (window.location.href =
-                  "/dashboard/socios")
-              }
-            />
+  <DashboardNavItem
+    icon={BarChart3}
+    label="Inicio"
+    active
+    onClick={() =>
+      (window.location.href = "/dashboard")
+    }
+  />
 
-            <DashboardNavItem
-              icon={Package}
-              label="Catálogo"
-              active
-            />
+  <DashboardNavItem
+    icon={Users}
+    label="Socios"
+    onClick={() =>
+      (window.location.href = "/dashboard/socios")
+    }
+  />
 
-            <DashboardNavItem
-              icon={Package}
-              label="Stock"
-              onClick={() =>
-                (window.location.href =
-                  "/dashboard/stock")
-              }
-            />
+  <DashboardNavItem
+    icon={Package}
+    label="Catálogo"
+    onClick={() =>
+      (window.location.href = "/dashboard/catalogo")
+    }
+  />
 
-            <DashboardNavItem
-              icon={CalendarDays}
-              label="Reservas"
-              onClick={() =>
-                (window.location.href =
-                  "/dashboard/reservas")
-              }
-            />
+  <DashboardNavItem
+    icon={Package}
+    label="Stock"
+    disabled
+  />
 
-            <DashboardNavItem
-              icon={ShoppingCart}
-              label="Ventas"
-              onClick={() =>
-                (window.location.href =
-                  "/dashboard/ventas")
-              }
-            />
+  <DashboardNavItem
+    icon={CalendarDays}
+    label="Reservas"
+    disabled
+  />
 
-            <DashboardNavItem
-              icon={ArrowDownToLine}
-              label="Retiros"
-              onClick={() =>
-                (window.location.href =
-                  "/dashboard/retiros")
-              }
-            />
+  <DashboardNavItem
+    icon={ShoppingCart}
+    label="Ventas"
+    disabled
+  />
 
-            <DashboardNavItem
-              icon={Bell}
-              label="Comunicación"
-              onClick={() =>
-                (window.location.href =
-                  "/dashboard/comunicacion")
-              }
-            />
+  <DashboardNavItem
+    icon={ArrowDownToLine}
+    label="Retiros"
+    disabled
+  />
 
-            <DashboardNavItem
-              icon={BarChart3}
-              label="Reportes"
-              onClick={() =>
-                (window.location.href =
-                  "/dashboard/reportes")
-              }
-            />
+  <DashboardNavItem
+    icon={Bell}
+    label="Comunicación"
+    disabled
+  />
 
-            <div className="my-4 border-t border-zinc-100" />
+  <DashboardNavItem
+    icon={BarChart3}
+    label="Reportes"
+    disabled
+  />
 
-            <DashboardNavItem
-              icon={Settings}
-              label="Configuración"
-              onClick={() =>
-                (window.location.href =
-                  "/dashboard/configuracion")
-              }
-            />
+  <div className="my-4 border-t border-zinc-100" />
 
-          </nav>
+  <DashboardNavItem
+    icon={Settings}
+    label="Configuración"
+    disabled
+  />
+
+</nav>
 
           {/* QUICK ACTION */}
 
           <div className="border-t border-zinc-100 p-4">
-
-            <Button
-              className="h-11 w-full rounded-xl bg-emerald-900 font-semibold hover:bg-emerald-800"
-              onClick={() =>
-                (window.location.href =
-                  "/dashboard/reservas")
-              }
-            >
-              <CalendarDays className="mr-2 h-4 w-4" />
-              Nueva reserva
-            </Button>
 
           </div>
 
@@ -577,89 +548,83 @@ setShowClubSelector(true)
 
       {/* NAVIGATION */}
 
-      <nav className="flex-1 space-y-1 overflow-y-auto px-4">
+     {/* NAVIGATION */}
 
-        <DashboardNavItem
-          icon={BarChart3}
-          label="Inicio"
-          onClick={() =>
-            (window.location.href = "/dashboard")
-          }
-        />
+<nav className="flex-1 space-y-1 overflow-y-auto px-4">
 
-        <DashboardNavItem
-          icon={Users}
-          label="Socios"
-          onClick={() =>
-            (window.location.href = "/dashboard/socios")
-          }
-        />
+  <DashboardNavItem
+    icon={BarChart3}
+    label="Inicio"
+    active
+    onClick={() => {
+      setMobileMenuOpen(false)
+      window.location.href = "/dashboard"
+    }}
+  />
 
-        <DashboardNavItem
-          icon={Package}
-          label="Catálogo"
-          active
-        />
+  <DashboardNavItem
+    icon={Users}
+    label="Socios"
+    onClick={() => {
+      setMobileMenuOpen(false)
+      window.location.href = "/dashboard/socios"
+    }}
+  />
 
-        <DashboardNavItem
-          icon={Package}
-          label="Stock"
-          onClick={() =>
-            (window.location.href = "/dashboard/stock")
-          }
-        />
+  <DashboardNavItem
+    icon={Package}
+    label="Catálogo"
+    onClick={() => {
+      setMobileMenuOpen(false)
+      window.location.href = "/dashboard/catalogo"
+    }}
+  />
 
-        <DashboardNavItem
-          icon={CalendarDays}
-          label="Reservas"
-          onClick={() =>
-            (window.location.href = "/dashboard/reservas")
-          }
-        />
+  <DashboardNavItem
+    icon={Package}
+    label="Stock"
+    disabled
+  />
 
-        <DashboardNavItem
-          icon={ShoppingCart}
-          label="Ventas"
-          onClick={() =>
-            (window.location.href = "/dashboard/ventas")
-          }
-        />
+  <DashboardNavItem
+    icon={CalendarDays}
+    label="Reservas"
+    disabled
+  />
 
-        <DashboardNavItem
-          icon={ArrowDownToLine}
-          label="Retiros"
-          onClick={() =>
-            (window.location.href = "/dashboard/retiros")
-          }
-        />
+  <DashboardNavItem
+    icon={ShoppingCart}
+    label="Ventas"
+    disabled
+  />
 
-        <DashboardNavItem
-          icon={Bell}
-          label="Comunicación"
-          onClick={() =>
-            (window.location.href = "/dashboard/comunicacion")
-          }
-        />
+  <DashboardNavItem
+    icon={ArrowDownToLine}
+    label="Retiros"
+    disabled
+  />
 
-        <DashboardNavItem
-          icon={BarChart3}
-          label="Reportes"
-          onClick={() =>
-            (window.location.href = "/dashboard/reportes")
-          }
-        />
+  <DashboardNavItem
+    icon={Bell}
+    label="Comunicación"
+    disabled
+  />
 
-        <div className="my-4 border-t border-zinc-100" />
+  <DashboardNavItem
+    icon={BarChart3}
+    label="Reportes"
+    disabled
+  />
 
-        <DashboardNavItem
-          icon={Settings}
-          label="Configuración"
-          onClick={() =>
-            (window.location.href = "/dashboard/configuracion")
-          }
-        />
+  <div className="my-4 border-t border-zinc-100" />
 
-      </nav>
+  <DashboardNavItem
+    icon={Settings}
+    label="Configuración"
+    disabled
+  />
+
+</nav>
 
       {/* LOGOUT */}
 
@@ -2180,25 +2145,31 @@ function NumberField({
 /* NAV */
 /* =============================================================== */
 
+
 function DashboardNavItem({
   icon: Icon,
   label,
   active = false,
   onClick,
+  disabled = false,
 }: {
   icon: any
   label: string
   active?: boolean
   onClick?: () => void
+  disabled?: boolean
 }) {
   return (
     <button
       type="button"
-      onClick={onClick}
+      onClick={disabled ? undefined : onClick}
+      disabled={disabled}
       className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition ${
         active
           ? "bg-emerald-900 text-white shadow-sm"
-          : "text-zinc-600 hover:bg-zinc-50 hover:text-zinc-950"
+          : disabled
+            ? "cursor-not-allowed text-zinc-300"
+            : "text-zinc-600 hover:bg-zinc-50 hover:text-zinc-950"
       }`}
     >
       <Icon
