@@ -8,6 +8,7 @@ import { Building2, Leaf, ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { WaitOverlay } from "@/components/ui/wait-overlay"
 
 const API_URL =
   "https://growcrm-api-production.up.railway.app"
@@ -159,13 +160,31 @@ if (
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-zinc-50">
-        <p className="text-zinc-500">Cargando...</p>
+      <div className="min-h-screen bg-zinc-50">
+        <WaitOverlay
+          open
+          label="Preparando la creación de club"
+          messages={[
+            "Cargando los tipos de club...",
+            "Preparando las opciones...",
+            "Ya casi podés continuar...",
+          ]}
+        />
       </div>
     )
   }
 
   return (
+    <>
+    <WaitOverlay
+      open={creating}
+      label="Creando club"
+      messages={[
+        "Creando tu club...",
+        "Guardando la configuración...",
+        "Preparando el espacio de trabajo...",
+      ]}
+    />
     <main className="min-h-screen bg-zinc-50 px-4 py-8 sm:px-6 sm:py-12">
       <div className="mx-auto w-full max-w-4xl">
 
@@ -456,5 +475,6 @@ if (
         </form>
       </div>
     </main>
+    </>
   )
 }

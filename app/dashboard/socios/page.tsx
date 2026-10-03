@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   ArrowLeft,
   Search,
@@ -16,15 +17,51 @@ import {
   Check,
   X,
 } from "lucide-react";
+import { WaitOverlay } from "@/components/ui/wait-overlay";
+
+const memberLoadingMessages = [
+  "Estamos cargando la información del club...",
+  "Consultando socios y solicitudes...",
+  "Actualizando la lista de miembros...",
+];
+
+const approvalLoadingMessages = [
+  "Enviando la aprobación al servidor...",
+  "Asociando el usuario al club...",
+  "Preparando el correo de bienvenida...",
+];
+
+const memberActionLoadingMessages = [
+  "Guardando los cambios del socio...",
+  "Actualizando la información del club...",
+];
 
 type MembershipRequest = {
   id: string;
-  status: string;
+  status: "pending" | "approved" | "rejected";
   createdAt: string;
+  reviewedAt?: string | null;
+  name: string;
+  email: string;
+  phone: string | null;
+  user?: {
+    id: string;
+    name: string | null;
+    email: string;
+  } | null;
+};
+
+type Member = {
+  id: string;
+  userId: string;
+  clubId: string;
+  role: string;
+  active: boolean;
   user: {
     id: string;
     name: string | null;
     email: string;
+    phone: string | null;
   };
 };
 
@@ -32,7 +69,8 @@ type Socio = {
   id: string;
   nombre: string;
   email: string;
-  estado: "Activo";
+  phone: string | null;
+  estado: "Activo" | "Desactivado";
   ingreso: string;
   reservas: number;
 };
@@ -41,13 +79,24 @@ const API_URL =
   "https://growcrm-api-production.up.railway.app";
 
 export default function SociosPage() {
-  const [requests, setRequests] = useState<MembershipRequest[]>([]);
-  const [loading, setLoading] = useState(true);
+const [requests, setRequests] = useState<MembershipRequest[]>([]);
+const [members, setMembers] = useState<Member[]>([]);
+const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [activeTab, setActiveTab] = useState<
-    "active" | "pending" | "rejected"
-  >("active");
+const [activeTab, setActiveTab] = useState<
+  "active" | "pending" | "inactive" | "rejected"
+>("active");
   const [processingId, setProcessingId] = useState<string | null>(null);
+
+  const [memberActionId, setMemberActionId] = useState<string | null>(null);
+
+const [editingMember, setEditingMember] = useState<Member | null>(null);
+
+const [editName, setEditName] = useState("");
+const [editEmail, setEditEmail] = useState("");
+const [editPhone, setEditPhone] = useState("");
+const [savingMember, setSavingMember] = useState(false);
+const [gmailDraftUrl, setGmailDraftUrl] = useState<string | null>(null);
 
   /*
    * Por ahora usamos el club guardado por el dashboard.
@@ -60,44 +109,102 @@ useEffect(() => {
   setClubId(storedClubId);
 }, []);
 
-  async function loadRequests() {
-    if (!clubId) {
-      setLoading(false);
-      return;
-    }
-
-    try {
-      setLoading(true);
-
-      const response = await fetch(
-        `${API_URL}/club/${clubId}/membership-requests`
-      );
-
-      if (!response.ok) {
-        throw new Error("No se pudieron cargar las solicitudes");
-      }
-
-      const data = await response.json();
-
-      setRequests(Array.isArray(data) ? data : []);
-    } catch (error) {
-      console.error("GET MEMBERSHIP REQUESTS ERROR:", error);
-      setRequests([]);
-    } finally {
-      setLoading(false);
-    }
+async function loadData() {
+  if (!clubId) {
+    setLoading(false);
+    return;
   }
 
-  useEffect(() => {
-    loadRequests();
-  }, [clubId]);
+  try {
+    setLoading(true);
+
+    const [requestsResponse, membersResponse] = await Promise.all([
+      fetch(
+        `${API_URL}/club/${clubId}/membership-requests`
+      ),
+      fetch(
+        `${API_URL}/club/${clubId}/members`
+      ),
+    ]);
+
+    if (!requestsResponse.ok) {
+      throw new Error("No se pudieron cargar las solicitudes");
+    }
+
+    if (!membersResponse.ok) {
+      throw new Error("No se pudieron cargar los socios");
+    }
+
+    const requestsData = await requestsResponse.json();
+    const membersData = await membersResponse.json();
+
+    setRequests(
+      Array.isArray(requestsData) ? requestsData : []
+    );
+
+    setMembers(
+      Array.isArray(membersData) ? membersData : []
+    );
+  } catch (error) {
+    console.error("GET SOCIOS DATA ERROR:", error);
+    setRequests([]);
+    setMembers([]);
+  } finally {
+    setLoading(false);
+  }
+}
+
+useEffect(() => {
+  loadData();
+}, [clubId]);
 
   async function updateRequest(
     id: string,
     action: "approve" | "reject"
   ) {
+    let gmailTab: Window | null = null;
+
     try {
       setProcessingId(id);
+      setGmailDraftUrl(null);
+
+      if (action === "approve") {
+        // Reservamos la pestaña desde el clic para que Chrome permita abrir Gmail
+        // tras la respuesta de la API. La pestaña muestra estado, nunca queda vacía.
+        gmailTab = window.open("about:blank", "_blank");
+        if (gmailTab) {
+          gmailTab.document.open();
+          gmailTab.document.write(`<!doctype html>
+            <html lang="es">
+              <head>
+                <meta charset="utf-8" />
+                <meta name="viewport" content="width=device-width, initial-scale=1" />
+                <title>Aprobando socio | GrowCRM</title>
+                <style>
+                  * { box-sizing: border-box; }
+                  body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 24px; background: #f5faf8; color: #092f35; font-family: Arial, sans-serif; }
+                  main { width: min(100%, 390px); padding: 32px; border: 1px solid #dcebe6; border-radius: 24px; background: white; text-align: center; box-shadow: 0 18px 50px #092f3518; }
+                  .spinner { width: 42px; height: 42px; margin: 0 auto 20px; border: 4px solid #e6f5f0; border-top-color: #007f63; border-radius: 50%; animation: spin .8s linear infinite; }
+                  .track { height: 7px; margin-top: 24px; overflow: hidden; border-radius: 99px; background: #e6f5f0; }
+                  .bar { width: 40%; height: 100%; border-radius: inherit; background: #007f63; animation: slide 1.2s ease-in-out infinite alternate; }
+                  p { margin: 0; color: #647570; font-size: 14px; line-height: 1.6; }
+                  h1 { margin: 0 0 8px; font-size: 20px; }
+                  @keyframes spin { to { transform: rotate(360deg); } }
+                  @keyframes slide { from { transform: translateX(-15%); } to { transform: translateX(160%); } }
+                </style>
+              </head>
+              <body>
+                <main>
+                  <div class="spinner" aria-hidden="true"></div>
+                  <h1>Confirmando aprobación</h1>
+                  <p>Estamos esperando la respuesta del servidor. Gmail se abrirá cuando la aprobación esté confirmada.</p>
+                  <div class="track" role="progressbar" aria-label="Aprobación en curso"><div class="bar"></div></div>
+                </main>
+              </body>
+            </html>`);
+          gmailTab.document.close();
+        }
+      }
 
       const response = await fetch(
         `${API_URL}/membership-request/${id}/${action}`,
@@ -110,14 +217,174 @@ useEffect(() => {
         throw new Error("No se pudo actualizar la solicitud");
       }
 
-      await loadRequests();
+      const result = await response.json();
+
+      if (action === "approve") {
+        const approvedRequest = result.request;
+        const clubName = approvedRequest.club?.name || "el club";
+        const loginUrl = "https://growcrm-club.pages.dev/auth/login";
+
+        const subject = `¡Tu ingreso a ${clubName} fue aprobado!`;
+        const body = `Hola ${approvedRequest.name},
+
+Tu ingreso a ${clubName} fue aprobado. Tu usuario ya está asociado al club y podés acceder para comenzar a disfrutar tu membresía:
+
+${loginUrl}
+
+Ingresá con tu email y la contraseña que elegiste al registrarte.
+
+¡Te damos la bienvenida!`;
+
+        const gmailUrl =
+          `https://mail.google.com/mail/?view=cm&fs=1` +
+          `&to=${encodeURIComponent(approvedRequest.email)}` +
+          `&su=${encodeURIComponent(subject)}` +
+          `&body=${encodeURIComponent(body)}`;
+
+        if (gmailTab && !gmailTab.closed) {
+          gmailTab.location.href = gmailUrl;
+        } else {
+          // Respaldo si el navegador bloqueó la pestaña emergente.
+          setGmailDraftUrl(gmailUrl);
+        }
+      }
+
+      setRequests((current) =>
+        current.filter((request) => request.id !== id)
+      );
+      void loadData();
     } catch (error) {
+      if (gmailTab && !gmailTab.closed) gmailTab.close();
       console.error("MEMBERSHIP REQUEST UPDATE ERROR:", error);
       alert("No se pudo actualizar la solicitud.");
     } finally {
       setProcessingId(null);
     }
   }
+async function toggleMember(member: Member) {
+  try {
+    setMemberActionId(member.id);
+
+    const response = await fetch(
+      `${API_URL}/club-member/${member.id}/status`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          active: !member.active,
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error("No se pudo cambiar el estado del socio");
+    }
+
+    await loadData();
+  } catch (error) {
+    console.error("MEMBER STATUS ERROR:", error);
+    alert("No se pudo cambiar el estado del socio.");
+  } finally {
+    setMemberActionId(null);
+  }
+}
+
+async function deleteMember(member: Member) {
+  const confirmed = window.confirm(
+    `¿Seguro que querés eliminar a ${member.user.name || member.user.email} del club?`
+  );
+
+  if (!confirmed) return;
+
+  try {
+    setMemberActionId(member.id);
+
+    const response = await fetch(
+      `${API_URL}/club-member/${member.id}`,
+      {
+        method: "DELETE",
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error("No se pudo eliminar el socio");
+    }
+
+    await loadData();
+  } catch (error) {
+    console.error("DELETE MEMBER ERROR:", error);
+    alert("No se pudo eliminar el socio.");
+  } finally {
+    setMemberActionId(null);
+  }
+}
+
+function openEditMember(member: Member) {
+  setEditingMember(member);
+  setEditName(member.user.name || "");
+  setEditEmail(member.user.email);
+  setEditPhone(member.user.phone || "");
+}
+
+function closeEditMember() {
+  if (savingMember) return;
+
+  setEditingMember(null);
+  setEditName("");
+  setEditEmail("");
+  setEditPhone("");
+}
+
+async function saveMember() {
+  if (!editingMember) return;
+
+  if (!editName.trim() || !editEmail.trim()) {
+    alert("Nombre y email son obligatorios.");
+    return;
+  }
+
+  try {
+    setSavingMember(true);
+
+    const response = await fetch(
+      `${API_URL}/club-member/${editingMember.id}`,
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: editName.trim(),
+          email: editEmail.trim(),
+          phone: editPhone.trim(),
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      const data = await response.json().catch(() => null);
+
+      throw new Error(
+        data?.error || "No se pudo actualizar el socio"
+      );
+    }
+
+    await loadData();
+    closeEditMember();
+  } catch (error) {
+    console.error("UPDATE MEMBER ERROR:", error);
+
+    alert(
+      error instanceof Error
+        ? error.message
+        : "No se pudo actualizar el socio."
+    );
+  } finally {
+    setSavingMember(false);
+  }
+}
 
   const pending = requests.filter(
     (request) => request.status === "pending"
@@ -127,48 +394,62 @@ useEffect(() => {
     (request) => request.status === "rejected"
   );
 
-  const approved = requests.filter(
-    (request) => request.status === "approved"
-  );
+const activeMembers = members.filter(
+  (member) => member.active
+);
 
-  /*
-   * Las solicitudes aprobadas representan socios nuevos.
-   * Los datos de reservas todavía no existen en el backend de socios,
-   * por eso no inventamos actividad real.
-   */
-  const socios: Socio[] = approved.map((request) => ({
-    id: request.user.id,
-    nombre: request.user.name || "Sin nombre",
-    email: request.user.email,
-    estado: "Activo",
-    ingreso: formatDate(request.createdAt),
+const inactiveMembers = members.filter(
+  (member) => !member.active
+);
+
+const socios: Socio[] = members.map((member) => ({
+  id: member.id,
+  nombre: member.user.name || "Sin nombre",
+  email: member.user.email,
+  phone: member.user.phone,
+  estado: member.active ? "Activo" : "Desactivado",
+  ingreso: "—",
+  reservas: 0,
+}));
+
+const filteredSocios = useMemo(() => {
+  const value = search.trim().toLowerCase();
+
+  const source =
+    activeTab === "inactive"
+      ? inactiveMembers
+      : activeMembers;
+
+  const sociosForTab: Socio[] = source.map((member) => ({
+    id: member.id,
+    nombre: member.user.name || "Sin nombre",
+    email: member.user.email,
+    phone: member.user.phone,
+    estado: member.active ? "Activo" : "Desactivado",
+    ingreso: "—",
     reservas: 0,
   }));
 
-  const filteredSocios = useMemo(() => {
-    const value = search.trim().toLowerCase();
+  if (!value) return sociosForTab;
 
-    if (!value) return socios;
+  return sociosForTab.filter(
+    (socio) =>
+      socio.nombre.toLowerCase().includes(value) ||
+      socio.email.toLowerCase().includes(value)
+  );
+}, [activeMembers, inactiveMembers, activeTab, search]);
+const filteredPending = useMemo(() => {
+  const value = search.trim().toLowerCase();
 
-    return socios.filter(
-      (socio) =>
-        socio.nombre.toLowerCase().includes(value) ||
-        socio.email.toLowerCase().includes(value)
-    );
-  }, [socios, search]);
+  if (!value) return pending;
 
-  const filteredPending = useMemo(() => {
-    const value = search.trim().toLowerCase();
-
-    if (!value) return pending;
-
-    return pending.filter(
-      (request) =>
-        request.user.name?.toLowerCase().includes(value) ||
-        request.user.email.toLowerCase().includes(value)
-    );
-  }, [pending, search]);
-
+  return pending.filter(
+    (request) =>
+      request.name.toLowerCase().includes(value) ||
+      request.email.toLowerCase().includes(value) ||
+      request.phone?.toLowerCase().includes(value)
+  );
+}, [pending, search]);
   const filteredRejected = useMemo(() => {
     const value = search.trim().toLowerCase();
 
@@ -182,6 +463,18 @@ useEffect(() => {
   }, [rejected, search]);
 
   return (
+    <>
+    <WaitOverlay
+      open={loading || Boolean(processingId) || Boolean(memberActionId) || savingMember}
+      messages={
+        loading
+          ? memberLoadingMessages
+          : processingId
+            ? approvalLoadingMessages
+            : memberActionLoadingMessages
+      }
+      label={processingId ? "Aprobando solicitud de socio" : "Actualizando socios"}
+    />
     <main className="min-h-screen bg-[#f8faf9]">
       <div className="mx-auto max-w-7xl px-6 py-8">
 
@@ -223,6 +516,39 @@ useEffect(() => {
           </button>
         </div>
 
+        {gmailDraftUrl && (
+          <div className="mb-6 flex flex-col gap-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-5 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="font-semibold text-[#092f35]">
+                Aprobación confirmada por el servidor
+              </p>
+              <p className="mt-1 text-sm text-gray-600">
+                El socio ya está asociado al club. Podés abrir el borrador de bienvenida en Gmail.
+              </p>
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  window.open(gmailDraftUrl, "_blank", "noopener,noreferrer");
+                  setGmailDraftUrl(null);
+                }}
+                className="rounded-xl bg-[#006b58] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#005a4b]"
+              >
+                Abrir borrador en Gmail
+              </button>
+              <button
+                type="button"
+                aria-label="Cerrar aviso"
+                onClick={() => setGmailDraftUrl(null)}
+                className="flex h-10 w-10 items-center justify-center rounded-xl text-gray-500 transition hover:bg-white/70"
+              >
+                <X size={18} />
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* MÉTRICAS */}
         <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
 
@@ -230,7 +556,7 @@ useEffect(() => {
             icon={<Users size={20} />}
             iconClass="bg-[#e8f7f2] text-[#007f63]"
             label="Total"
-            value={approved.length}
+            value={members.length}
             description="Socios registrados"
           />
 
@@ -238,7 +564,7 @@ useEffect(() => {
             icon={<CheckCircle2 size={20} />}
             iconClass="bg-emerald-50 text-emerald-700"
             label="Estado"
-            value={approved.length}
+            value={activeMembers.length}
             description="Socios activos"
           />
 
@@ -274,18 +600,22 @@ useEffect(() => {
                 <div>
                   <h2 className="text-lg font-bold text-[#092f35]">
                     {activeTab === "active"
-                      ? "Socios activos"
-                      : activeTab === "pending"
-                        ? "Solicitudes pendientes"
-                        : "Solicitudes rechazadas"}
+  ? "Socios activos"
+  : activeTab === "pending"
+    ? "Solicitudes pendientes"
+    : activeTab === "inactive"
+      ? "Socios desactivados"
+      : "Solicitudes rechazadas"}
                   </h2>
 
                   <p className="mt-1 text-sm text-gray-500">
                     {activeTab === "active"
-                      ? "Socios que forman parte actualmente del club."
-                      : activeTab === "pending"
-                        ? "Personas que solicitaron ingresar al club."
-                        : "Solicitudes que fueron rechazadas."}
+  ? "Socios que forman parte actualmente del club."
+  : activeTab === "pending"
+    ? "Personas que solicitaron ingresar al club."
+    : activeTab === "inactive"
+      ? "Socios que fueron desactivados temporalmente."
+      : "Solicitudes que fueron rechazadas."}
                   </p>
                 </div>
 
@@ -307,34 +637,42 @@ useEffect(() => {
               </div>
 
               {/* TABS */}
-              <div className="flex items-center gap-1 rounded-xl bg-gray-100 p-1 w-fit">
+<div className="flex items-center gap-1 rounded-xl bg-gray-100 p-1 w-fit">
 
-                <Tab
-                  active={activeTab === "active"}
-                  onClick={() => setActiveTab("active")}
-                  icon={<Users size={15} />}
-                  label="Activos"
-                  count={approved.length}
-                />
+  <Tab
+    active={activeTab === "active"}
+    onClick={() => setActiveTab("active")}
+    icon={<Users size={15} />}
+    label="Activos"
+    count={activeMembers.length}
+  />
 
-                <Tab
-                  active={activeTab === "pending"}
-                  onClick={() => setActiveTab("pending")}
-                  icon={<Clock3 size={15} />}
-                  label="Pendientes"
-                  count={pending.length}
-                  notification={pending.length > 0}
-                />
+  <Tab
+    active={activeTab === "pending"}
+    onClick={() => setActiveTab("pending")}
+    icon={<Clock3 size={15} />}
+    label="Pendientes"
+    count={pending.length}
+    notification={pending.length > 0}
+  />
 
-                <Tab
-                  active={activeTab === "rejected"}
-                  onClick={() => setActiveTab("rejected")}
-                  icon={<XCircle size={15} />}
-                  label="Rechazados"
-                  count={rejected.length}
-                />
+  <Tab
+    active={activeTab === "inactive"}
+    onClick={() => setActiveTab("inactive")}
+    icon={<XCircle size={15} />}
+    label="Desactivados"
+    count={inactiveMembers.length}
+  />
 
-              </div>
+  <Tab
+    active={activeTab === "rejected"}
+    onClick={() => setActiveTab("rejected")}
+    icon={<XCircle size={15} />}
+    label="Rechazados"
+    count={rejected.length}
+  />
+
+</div>
 
             </div>
           </div>
@@ -343,9 +681,7 @@ useEffect(() => {
 
           {loading ? (
             <div className="flex min-h-[280px] items-center justify-center">
-              <div className="text-sm text-gray-400">
-                Cargando socios...
-              </div>
+              <div className="text-sm text-gray-400">Cargando socios...</div>
             </div>
           ) : !clubId ? (
             <div className="flex min-h-[280px] items-center justify-center px-6 text-center">
@@ -358,11 +694,20 @@ useEffect(() => {
                 </p>
               </div>
             </div>
-          ) : activeTab === "active" ? (
-            <ActiveMembers
-              socios={filteredSocios}
-            />
-          ) : activeTab === "pending" ? (
+          ) : activeTab === "active" || activeTab === "inactive" ? (
+  <ActiveMembers
+    socios={filteredSocios}
+    members={
+      activeTab === "inactive"
+        ? inactiveMembers
+        : activeMembers
+    }
+    onEdit={openEditMember}
+    onToggle={toggleMember}
+    onDelete={deleteMember}
+    processingId={memberActionId}
+  />
+) : activeTab === "pending" ? (
             <PendingRequests
               requests={filteredPending}
               processingId={processingId}
@@ -387,10 +732,134 @@ useEffect(() => {
         </footer>
 
       </div>
+      <EditMemberModal
+  member={editingMember}
+  name={editName}
+  email={editEmail}
+  phone={editPhone}
+  setName={setEditName}
+  setEmail={setEditEmail}
+  setPhone={setEditPhone}
+  saving={savingMember}
+  onClose={closeEditMember}
+  onSave={saveMember}
+/>
     </main>
+    </>
   );
 }
+function EditMemberModal({
+  member,
+  name,
+  email,
+  phone,
+  setName,
+  setEmail,
+  setPhone,
+  saving,
+  onClose,
+  onSave,
+}: {
+  member: Member | null;
+  name: string;
+  email: string;
+  phone: string;
+  setName: (value: string) => void;
+  setEmail: (value: string) => void;
+  setPhone: (value: string) => void;
+  saving: boolean;
+  onClose: () => void;
+  onSave: () => void;
+}) {
+  if (!member) return null;
 
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4">
+      <div className="w-full max-w-lg rounded-2xl border border-gray-200 bg-white shadow-xl">
+
+        <div className="border-b border-gray-100 px-6 py-5">
+          <h3 className="text-lg font-bold text-[#092f35]">
+            Editar socio
+          </h3>
+
+          <p className="mt-1 text-sm text-gray-500">
+            Modificá los datos del socio.
+          </p>
+        </div>
+
+        <div className="space-y-4 px-6 py-5">
+
+          <div>
+            <label className="mb-1.5 block text-sm font-semibold text-gray-700">
+              Nombre
+            </label>
+
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="h-11 w-full rounded-xl border border-gray-200 px-4 text-sm outline-none focus:border-[#007f63]"
+            />
+          </div>
+
+          <div>
+            <label className="mb-1.5 block text-sm font-semibold text-gray-700">
+              Email
+            </label>
+
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="h-11 w-full rounded-xl border border-gray-200 px-4 text-sm outline-none focus:border-[#007f63]"
+            />
+          </div>
+
+          <div>
+            <label className="mb-1.5 block text-sm font-semibold text-gray-700">
+              Teléfono
+            </label>
+
+            <input
+              type="text"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              className="h-11 w-full rounded-xl border border-gray-200 px-4 text-sm outline-none focus:border-[#007f63]"
+            />
+          </div>
+
+          <p className="text-xs text-gray-400">
+            La contraseña del socio no puede ser visualizada ni modificada desde administración.
+          </p>
+
+        </div>
+
+        <div className="flex justify-end gap-2 border-t border-gray-100 px-6 py-4">
+
+          <button
+            type="button"
+            disabled={saving}
+            onClick={onClose}
+            className="rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50 disabled:opacity-50"
+          >
+            Cancelar
+          </button>
+
+          <button
+            type="button"
+            disabled={saving}
+            onClick={onSave}
+            className="rounded-xl bg-[#006b58] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#005a4b] disabled:opacity-50"
+          >
+            {saving ? "Guardando..." : "Guardar cambios"}
+          </button>
+
+        </div>
+
+      </div>
+    </div>
+  );
+}
 /* ========================= */
 /* COMPONENTES */
 /* ========================= */
@@ -491,20 +960,44 @@ function Tab({
 
 function ActiveMembers({
   socios,
+  members,
+  onEdit,
+  onToggle,
+  onDelete,
+  processingId,
 }: {
   socios: Socio[];
+  members: Member[];
+  onEdit: (member: Member) => void;
+  onToggle: (member: Member) => void;
+  onDelete: (member: Member) => void;
+  processingId: string | null;
 }) {
+  const [openMenu, setOpenMenu] = useState<{
+    memberId: string;
+    top: number;
+    left: number;
+  } | null>(null);
+
   if (socios.length === 0) {
     return (
       <EmptyState
         icon={<Users size={24} />}
-        title="Todavía no hay socios activos"
-        description="Cuando apruebes solicitudes de ingreso, los socios aparecerán acá."
+        title="No hay socios en esta sección"
+        description="Los socios aparecerán acá según su estado."
       />
-    );
-  }
+  );
+}
+
+  const memberById = new Map(
+    members.map((member) => [member.id, member])
+  );
+  const menuMember = openMenu
+    ? memberById.get(openMenu.memberId)
+    : undefined;
 
   return (
+    <>
     <div className="overflow-x-auto">
       <table className="w-full min-w-[850px]">
 
@@ -537,86 +1030,186 @@ function ActiveMembers({
         </thead>
 
         <tbody>
-          {socios.map((socio) => (
-            <tr
-              key={socio.id}
-              className="group border-b border-gray-100 last:border-0 transition hover:bg-gray-50/60"
-            >
+          {socios.map((socio) => {
+            const member = memberById.get(socio.id);
 
-              <td className="px-6 py-5">
-                <div className="flex items-center gap-3">
+            if (!member) return null;
 
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#dff4ed] text-sm font-bold text-[#007f63]">
-                    {getInitials(socio.nombre)}
+            return (
+              <tr
+                key={socio.id}
+                className="group border-b border-gray-100 last:border-0 transition hover:bg-gray-50/60"
+              >
+
+                <td className="px-6 py-5">
+                  <div className="flex items-center gap-3">
+
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#dff4ed] text-sm font-bold text-[#007f63]">
+                      {getInitials(socio.nombre)}
+                    </div>
+
+                    <div>
+                      <p className="font-semibold text-[#092f35]">
+                        {socio.nombre}
+                      </p>
+
+                      <p className="mt-0.5 text-xs text-gray-400">
+                        Socio
+                      </p>
+                    </div>
+
                   </div>
+                </td>
 
-                  <div>
-                    <p className="font-semibold text-[#092f35]">
-                      {socio.nombre}
-                    </p>
+                <td className="px-6 py-5">
+                  <div className="space-y-1">
 
-                    <p className="mt-0.5 text-xs text-gray-400">
-                      Socio
-                    </p>
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <Mail size={14} className="text-gray-400" />
+                      {socio.email}
+                    </div>
+
+                    <div className="flex items-center gap-2 text-xs text-gray-400">
+                      <Phone size={13} />
+                      {socio.phone || "No disponible"}
+                    </div>
+
                   </div>
+                </td>
 
-                </div>
-              </td>
-
-              <td className="px-6 py-5">
-                <div className="space-y-1">
-
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <Mail size={14} className="text-gray-400" />
-                    {socio.email}
-                  </div>
-
-                  <div className="flex items-center gap-2 text-xs text-gray-400">
-                    <Phone size={13} />
-                    No disponible
-                  </div>
-
-                </div>
-              </td>
-
-              <td className="px-6 py-5">
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                  Activo
-                </span>
-              </td>
-
-              <td className="px-6 py-5 text-sm text-gray-600">
-                {socio.ingreso}
-              </td>
-
-              <td className="px-6 py-5">
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold text-[#092f35]">
-                    {socio.reservas}
+                <td className="px-6 py-5">
+                  <span
+                    className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold ${
+                      socio.estado === "Activo"
+                        ? "bg-emerald-50 text-emerald-700"
+                        : "bg-gray-100 text-gray-600"
+                    }`}
+                  >
+                    <span
+                      className={`h-1.5 w-1.5 rounded-full ${
+                        socio.estado === "Activo"
+                          ? "bg-emerald-500"
+                          : "bg-gray-400"
+                      }`}
+                    />
+                    {socio.estado}
                   </span>
+                </td>
 
-                  <span className="text-xs text-gray-400">
-                    reservas
-                  </span>
-                </div>
-              </td>
+                <td className="px-6 py-5 text-sm text-gray-600">
+                  {socio.ingreso}
+                </td>
 
-              <td className="px-6 py-5">
-                <button
-                  type="button"
-                  className="flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 text-gray-400 transition hover:border-gray-300 hover:bg-white hover:text-gray-700"
-                >
-                  <MoreHorizontal size={18} />
-                </button>
-              </td>
+                <td className="px-6 py-5">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-[#092f35]">
+                      {socio.reservas}
+                    </span>
 
-            </tr>
-          ))}
+                    <span className="text-xs text-gray-400">
+                      reservas
+                    </span>
+                  </div>
+                </td>
+
+                <td className="relative px-6 py-5">
+                  <div className="relative flex justify-end">
+                    <button
+                      type="button"
+                      aria-label={`Opciones de ${socio.nombre}`}
+                      aria-haspopup="menu"
+                      aria-expanded={openMenu?.memberId === member.id}
+                      onClick={(event) => {
+                        if (openMenu?.memberId === member.id) {
+                          setOpenMenu(null);
+                          return;
+                        }
+
+                        const rect = event.currentTarget.getBoundingClientRect();
+                        const menuHeight = 144;
+                        const menuWidth = 192;
+                        const top = rect.bottom + menuHeight > window.innerHeight - 8
+                          ? Math.max(8, rect.top - menuHeight - 8)
+                          : rect.bottom + 8;
+                        const left = Math.max(
+                          8,
+                          Math.min(window.innerWidth - menuWidth - 8, rect.right - menuWidth)
+                        );
+
+                        setOpenMenu({ memberId: member.id, top, left });
+                      }}
+                      className="flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 text-gray-400 transition hover:border-gray-300 hover:bg-white hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#007f63]/30"
+                    >
+                      <MoreHorizontal size={18} />
+                    </button>
+                  </div>
+                </td>
+
+              </tr>
+            );
+          })}
         </tbody>
 
       </table>
     </div>
+    {openMenu && menuMember && createPortal(
+      <>
+        <button
+          type="button"
+          aria-label="Cerrar opciones del socio"
+          onClick={() => setOpenMenu(null)}
+          className="fixed inset-0 z-[80] cursor-default bg-transparent"
+        />
+        <div
+          role="menu"
+          aria-label="Opciones del socio"
+          style={{ top: openMenu.top, left: openMenu.left }}
+          className="fixed z-[81] w-48 overflow-hidden rounded-xl border border-gray-200 bg-white py-1 shadow-xl shadow-[#092f35]/15"
+        >
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              setOpenMenu(null);
+              onEdit(menuMember);
+            }}
+            className="flex w-full items-center px-4 py-3 text-left text-sm font-medium text-gray-700 hover:bg-gray-50"
+          >
+            Editar
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            disabled={processingId === menuMember.id}
+            onClick={() => {
+              setOpenMenu(null);
+              onToggle(menuMember);
+            }}
+            className="flex w-full items-center px-4 py-3 text-left text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+          >
+            {processingId === menuMember.id
+              ? "Procesando..."
+              : menuMember.active
+                ? "Desactivar"
+                : "Activar"}
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            disabled={processingId === menuMember.id}
+            onClick={() => {
+              setOpenMenu(null);
+              onDelete(menuMember);
+            }}
+            className="flex w-full items-center px-4 py-3 text-left text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+          >
+            Eliminar
+          </button>
+        </div>
+      </>,
+      document.body
+    )}
+    </>
   );
 }
 
@@ -653,18 +1246,25 @@ function PendingRequests({
           <div className="flex items-center gap-4">
 
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-amber-50 text-sm font-bold text-amber-700">
-              {getInitials(request.user.name || request.user.email)}
+              {getInitials(request.name || request.email)}
             </div>
 
             <div>
               <p className="font-semibold text-[#092f35]">
-                {request.user.name || "Sin nombre"}
+                {request.name || "Sin nombre"}
               </p>
 
               <div className="mt-1 flex items-center gap-2 text-sm text-gray-500">
                 <Mail size={14} />
-                {request.user.email}
-              </div>
+                {request.email}
+                </div>
+
+                {request.phone && (
+                <div className="mt-1 flex items-center gap-2 text-sm text-gray-500">
+                    <Phone size={14} />
+                    {request.phone}
+                </div>
+                )}
 
               <p className="mt-1 text-xs text-gray-400">
                 Solicitud recibida el {formatDate(request.createdAt)}
@@ -733,18 +1333,23 @@ function RejectedRequests({
           <div className="flex items-center gap-4">
 
             <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gray-100 text-sm font-bold text-gray-500">
-              {getInitials(request.user.name || request.user.email)}
+              {getInitials(request.name || request.email)}
             </div>
 
             <div>
               <p className="font-semibold text-[#092f35]">
-                {request.user.name || "Sin nombre"}
+                {request.name || "Sin nombre"}
               </p>
 
               <p className="mt-1 text-sm text-gray-500">
-                {request.user.email}
+                {request.email}
               </p>
 
+              {request.phone && (
+                <p className="mt-1 text-xs text-gray-400">
+                  {request.phone}
+                </p>
+              )}
             </div>
 
           </div>

@@ -107,7 +107,12 @@ const [loadingEditAttributes, setLoadingEditAttributes] =
       }
 
       const response = await fetch(
-        `${API_URL}/club/${clubId}/products`
+        `${API_URL}/club/${clubId}/products`,
+        {
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
+        }
       )
 
       if (!response.ok) {

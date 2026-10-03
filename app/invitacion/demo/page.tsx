@@ -9,10 +9,18 @@ import {
   Phone,
   User,
 } from "lucide-react"
+import { WaitOverlay } from "@/components/ui/wait-overlay"
+
+const membershipMessages = [
+  "Enviando tu solicitud al club...",
+  "Guardando tus datos de forma segura...",
+  "Avisando a la administración...",
+]
 
 export default function InvitacionDemoPage() {
   const [showForm, setShowForm] = useState(false)
   const [submitted, setSubmitted] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const [form, setForm] = useState({
     nombre: "",
@@ -51,15 +59,21 @@ const handleSubmit = async (
   }
 
   if (form.password !== form.confirmPassword) {
-    alert("Las contraseñas no coinciden.")
-    return
-  }
+  alert("Las contraseñas no coinciden.")
+  return
+}
+
+if (form.password.length < 6) {
+  alert("La contraseña debe tener al menos 6 caracteres.")
+  return
+}
 
   if (!form.accept) {
     alert("Tenés que aceptar las condiciones para continuar.")
     return
   }
 
+  setIsSubmitting(true)
   try {
     // Tomamos el clubId de la URL:
     // /invitacion/demo?clubId=...
@@ -83,10 +97,9 @@ const response = await fetch(
     },
 body: JSON.stringify({
   clubId,
-  nombre: form.nombre.trim(),
-  apellido: form.apellido.trim(),
+  name: `${form.nombre.trim()} ${form.apellido.trim()}`,
   email: form.email.trim(),
-  telefono: form.telefono.trim(),
+  phone: form.telefono.trim(),
   password: form.password,
 }),
   }
@@ -127,8 +140,10 @@ try {
     alert(
       error instanceof Error
         ? error.message
-        : "No se pudo enviar la solicitud."
+      : "No se pudo enviar la solicitud."
     )
+  } finally {
+    setIsSubmitting(false)
   }
 }
 
@@ -176,6 +191,8 @@ try {
   }
 
   return (
+    <>
+    <WaitOverlay open={isSubmitting} messages={membershipMessages} label="Enviando solicitud de socio" />
     <main className="min-h-screen bg-[#f5faf8]">
 
       {/* TOP BRAND */}
@@ -378,6 +395,7 @@ try {
                     }
                     icon={<Lock className="h-4 w-4" />}
                     required
+                    minLength={6}
                   />
 
                   <Field
@@ -390,6 +408,7 @@ try {
                     }
                     icon={<Lock className="h-4 w-4" />}
                     required
+                    minLength={6}
                   />
 
                 </div>
@@ -414,10 +433,11 @@ try {
 
                 <button
                   type="submit"
+                  disabled={isSubmitting}
                   className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#006b55] px-5 py-4 text-sm font-bold text-white shadow-sm transition hover:bg-[#005c49]"
                 >
-                  Solicitar incorporación
-                  <ArrowRight className="h-4 w-4" />
+                  {isSubmitting ? "Enviando solicitud..." : "Solicitar incorporación"}
+                  {!isSubmitting && <ArrowRight className="h-4 w-4" />}
                 </button>
 
                 <div className="flex items-center justify-center gap-2 pt-1 text-xs text-zinc-400">
@@ -440,6 +460,7 @@ try {
 
       </div>
     </main>
+    </>
   )
 }
 
@@ -465,6 +486,7 @@ function Field({
   type = "text",
   icon,
   required = false,
+  minLength,
 }: {
   label: string
   placeholder: string
@@ -473,6 +495,7 @@ function Field({
   type?: string
   icon?: React.ReactNode
   required?: boolean
+  minLength?: number
 }) {
   return (
     <div>
@@ -495,6 +518,7 @@ function Field({
           type={type}
           value={value}
           required={required}
+          minLength={minLength}
           placeholder={placeholder}
           onChange={(event) => onChange(event.target.value)}
           className={`h-12 w-full rounded-xl border border-zinc-200 bg-white px-4 text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-[#007f63] focus:ring-4 focus:ring-[#007f63]/10 ${

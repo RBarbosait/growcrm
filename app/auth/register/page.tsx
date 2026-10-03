@@ -11,6 +11,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { ArrowLeft, Eye, EyeOff } from "lucide-react"
+import { WaitOverlay } from "@/components/ui/wait-overlay"
+
+const registerMessages = [
+  "Estamos creando tu cuenta...",
+  "Estamos preparando tu espacio en GrowCRM...",
+  "Enseguida vas a poder continuar...",
+]
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
@@ -29,11 +36,16 @@ export default function RegisterPage() {
   e.preventDefault()
 
   if (formData.password !== formData.confirmPassword) {
-    alert("Las contraseñas no coinciden")
-    return
-  }
+  alert("Las contraseñas no coinciden")
+  return
+}
 
-  if (!formData.acceptTerms) {
+if (formData.password.length < 6) {
+  alert("La contraseña debe tener al menos 6 caracteres")
+  return
+}
+
+if (!formData.acceptTerms) {
     alert("Debes aceptar los términos y condiciones")
     return
   }
@@ -84,6 +96,8 @@ export default function RegisterPage() {
   }
 
   return (
+<>
+<WaitOverlay open={isLoading} messages={registerMessages} label="Creando cuenta" />
 <div className="relative min-h-screen overflow-hidden bg-white text-zinc-900 flex items-center justify-center p-4">
   <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
   <div className="absolute -top-52 left-1/2 h-[700px] w-[700px] -translate-x-1/2 rounded-full bg-emerald-200/25 blur-[160px]" />
@@ -150,13 +164,14 @@ export default function RegisterPage() {
                 <Label htmlFor="password">Contraseña</Label>
                 <div className="relative">
                   <Input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    placeholder="••••••••"
-                    value={formData.password}
-                    onChange={(e) => updateFormData("password", e.target.value)}
-                    required
-                  />
+  id="password"
+  type={showPassword ? "text" : "password"}
+  placeholder="••••••••"
+  value={formData.password}
+  onChange={(e) => updateFormData("password", e.target.value)}
+  minLength={6}
+  required
+/>
                   <Button
                     type="button"
                     variant="ghost"
@@ -173,13 +188,14 @@ export default function RegisterPage() {
                 <Label htmlFor="confirmPassword">Confirmar contraseña</Label>
                 <div className="relative">
                   <Input
-                    id="confirmPassword"
-                    type={showConfirmPassword ? "text" : "password"}
-                    placeholder="••••••••"
-                    value={formData.confirmPassword}
-                    onChange={(e) => updateFormData("confirmPassword", e.target.value)}
-                    required
-                  />
+  id="confirmPassword"
+  type={showConfirmPassword ? "text" : "password"}
+  placeholder="••••••••"
+  value={formData.confirmPassword}
+  onChange={(e) => updateFormData("confirmPassword", e.target.value)}
+  minLength={6}
+  required
+/>
                   <Button
                     type="button"
                     variant="ghost"
@@ -227,5 +243,6 @@ export default function RegisterPage() {
         </Card>
       </div>
     </div>
+    </>
   )
 }

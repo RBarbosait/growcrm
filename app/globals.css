@@ -1,6 +1,29 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+@keyframes wait-progress-slide {
+  0% { transform: translateX(-110%); }
+  100% { transform: translateX(260%); }
+}
+
+@keyframes wait-message-in {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.wait-progress {
+  animation: wait-progress-slide 1.35s ease-in-out infinite;
+}
+
+.wait-message {
+  animation: wait-message-in 250ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wait-progress { animation-duration: 3s; }
+  .wait-message { animation: none; }
+}
+
 @custom-variant dark (&:is(.dark *));
 
 :root {

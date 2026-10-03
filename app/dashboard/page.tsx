@@ -14,6 +14,7 @@ import {
   Check,
   ChevronRight,
   ImagePlus,
+  Sparkles,
   LogOut,
   Package,
   Pencil,
@@ -32,6 +33,7 @@ import {
   CardContent,
 } from "@/components/ui/card"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { WaitOverlay } from "@/components/ui/wait-overlay"
 
 
 const API_URL =
@@ -141,28 +143,29 @@ const [saving, setSaving] = useState(false)
 
       setClubs(userClubs)
 
- // 0 clubes
-if (userClubs.length === 0) {
-  window.location.href = "/dashboard/onboarding"
-  return
-}
+      if (userClubs.length === 0) {
+        window.location.href = "/dashboard/onboarding"
+        return
+      }
 
-// 1 club → entra directamente
-if (userClubs.length === 1) {
-  localStorage.setItem(
-    "growcrm_active_club_id",
-    userClubs[0].id
-  )
+      const storedClubId = localStorage.getItem("growcrm_active_club_id")
+      const storedClub = userClubs.find((club) => club.id === storedClubId)
+      const selectedClub = storedClub || (userClubs.length === 1 ? userClubs[0] : null)
 
-  setActiveClub(userClubs[0])
+      if (selectedClub) {
+        localStorage.setItem("growcrm_active_club_id", selectedClub.id)
 
-  await loadProducts(userClubs[0].id)
+        if (selectedClub.role === "MEMBER") {
+          window.location.href = "/dashboard/socio"
+          return
+        }
 
-  return
-}
+        setActiveClub(selectedClub)
+        await loadProducts(selectedClub.id, session.access_token)
+        return
+      }
 
-// 2+ clubes → SIEMPRE mostrar selector
-setShowClubSelector(true)
+      setShowClubSelector(true)
     } catch (err) {
       console.error("ERROR CARGANDO CATÁLOGO:", err)
       setError("No se pudo cargar el catálogo.")
@@ -171,9 +174,10 @@ setShowClubSelector(true)
     }
   }
 
-  async function loadProducts(clubId: string) {
+  async function loadProducts(clubId: string, accessToken: string) {
     const response = await fetch(
-      `${API_URL}/club/${clubId}/products`
+      `${API_URL}/club/${clubId}/products`,
+      { headers: { Authorization: `Bearer ${accessToken}` } }
     )
 
     if (!response.ok) {
@@ -191,6 +195,32 @@ setShowClubSelector(true)
     const data = await response.json()
 
     setProducts(Array.isArray(data) ? data : [])
+  }
+
+  async function selectClub(club: Club) {
+    localStorage.setItem("growcrm_active_club_id", club.id)
+
+    if (club.role === "MEMBER") {
+      window.location.href = "/dashboard/socio"
+      return
+    }
+
+    setShowClubSelector(false)
+    setLoading(true)
+    setActiveClub(club)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        window.location.href = "/auth/login"
+        return
+      }
+      await loadProducts(club.id, session.access_token)
+    } catch (error) {
+      console.error("ERROR CARGANDO CLUB:", error)
+      setError("No se pudo cargar el catálogo del club.")
+    } finally {
+      setLoading(false)
+    }
   }
 
   async function handleSaveProduct(
@@ -316,16 +346,55 @@ setShowClubSelector(true)
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-zinc-50">
-        <div className="text-sm text-zinc-500">
-          Cargando catálogo...
-        </div>
+      <div className="min-h-screen bg-zinc-50">
+        <WaitOverlay
+          open
+          label="Cargando el catálogo del dashboard"
+          messages={[
+            "Cargando los clubes de tu cuenta...",
+            "Preparando el catálogo...",
+            "Ya casi está listo...",
+          ]}
+        />
       </div>
     )
   }
 
   if (!user) {
     return null
+  }
+
+  if (showClubSelector) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-[#f5faf8] px-5 py-10">
+        <section className="w-full max-w-2xl rounded-[32px] border border-emerald-100 bg-white p-7 shadow-xl shadow-emerald-950/5 sm:p-10">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-800">
+            <Building2 className="h-7 w-7" />
+          </div>
+          <p className="mt-5 text-center text-sm font-semibold text-emerald-700">Tu espacio GrowCRM</p>
+          <h1 className="mt-2 text-center text-3xl font-bold tracking-tight text-[#092f35]">¿A qué club querés entrar?</h1>
+          <p className="mt-3 text-center text-sm text-zinc-500">Elegí un club para abrir el espacio correspondiente a tu rol.</p>
+          <div className="mt-8 grid gap-3">
+            {clubs.map((club) => (
+              <button
+                key={club.id}
+                type="button"
+                onClick={() => void selectClub(club)}
+                className="flex items-center justify-between rounded-2xl border border-zinc-200 p-5 text-left transition hover:border-emerald-300 hover:bg-emerald-50/50"
+              >
+                <span>
+                  <span className="block font-semibold text-[#092f35]">{club.name}</span>
+                  <span className="mt-1 block text-xs font-medium uppercase tracking-wide text-zinc-400">
+                    {club.role === "MEMBER" ? "Socio" : "Administrador"}
+                  </span>
+                </span>
+                <ChevronRight className="h-5 w-5 text-emerald-700" />
+              </button>
+            ))}
+          </div>
+        </section>
+      </main>
+    )
   }
 
   return (
@@ -426,6 +495,12 @@ setShowClubSelector(true)
     onClick={() =>
       (window.location.href = "/dashboard/catalogo")
     }
+  />
+
+  <DashboardNavItem
+    icon={Sparkles}
+    label="Beneficios"
+    onClick={() => (window.location.href = "/dashboard/beneficios")}
   />
 
   <DashboardNavItem
@@ -577,6 +652,15 @@ setShowClubSelector(true)
     onClick={() => {
       setMobileMenuOpen(false)
       window.location.href = "/dashboard/catalogo"
+    }}
+  />
+
+  <DashboardNavItem
+    icon={Sparkles}
+    label="Beneficios"
+    onClick={() => {
+      setMobileMenuOpen(false)
+      window.location.href = "/dashboard/beneficios"
     }}
   />
 

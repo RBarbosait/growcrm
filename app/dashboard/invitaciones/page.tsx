@@ -22,7 +22,7 @@ export default function InvitacionesPage() {
   );
 
   const [copied, setCopied] = useState(false);
-  const [showEmailForm, setShowEmailForm] = useState(false);
+  
   const [recipients, setRecipients] = useState("");
 
 const [clubId, setClubId] = useState<string | null>(null);
@@ -55,9 +55,7 @@ const invitationUrl = clubId
     }
   };
 
-  const handleEmail = () => {
-    setShowEmailForm(true);
-  };
+
 
   const handleOpenGmail = () => {
     const emailList = recipients
@@ -88,7 +86,6 @@ Te esperamos para formar parte del club.`;
 
     window.open(gmailUrl, "_blank");
 
-    setShowEmailForm(false);
     setRecipients("");
   };
 
@@ -258,103 +255,84 @@ Te esperamos para formar parte del club.`;
 
             </div>
 
-            {/* EMAIL */}
-            <div className="mt-6 rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
+{/* EMAIL */}
+<div className="mt-6 rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
 
-              <h3 className="text-sm font-bold text-[#092f35]">
-                Compartir invitación
-              </h3>
+  <h3 className="text-sm font-bold text-[#092f35]">
+    Compartir invitación
+  </h3>
 
-              <p className="mt-1 text-xs leading-5 text-gray-500">
-                Prepará el correo desde Gmail o copiá el enlace para compartirlo por WhatsApp u otro medio.
-              </p>
+  <p className="mt-1 text-xs leading-5 text-gray-500">
+    Prepará el correo desde Gmail o copiá el enlace para compartirlo por WhatsApp u otro medio.
+  </p>
 
-              {!showEmailForm ? (
-                <div className="mt-4 grid gap-3">
+  <div className="mt-5">
 
-                  <button
-                    type="button"
-                    onClick={handleEmail}
-                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#006b55] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#005c49]"
-                  >
-                    <Mail size={18} />
-                    Abrir Gmail
-                  </button>
+    <div className="mb-4">
 
-                  <button
-                    type="button"
-                    onClick={handleCopy}
-                    className="flex w-full items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
-                  >
-                    {copied ? (
-                      <>
-                        <Check size={18} />
-                        Enlace copiado
-                      </>
-                    ) : (
-                      <>
-                        <Copy size={18} />
-                        Copiar enlace
-                      </>
-                    )}
-                  </button>
+      <label className="mb-2 block text-sm font-semibold text-gray-700">
+        Destinatarios
+      </label>
 
-                </div>
-              ) : (
-                <div className="mt-5">
-
-                  <div className="mb-4">
-
-                    <label className="mb-2 block text-sm font-semibold text-gray-700">
-                      Destinatarios
-                    </label>
-
-                    <textarea
-                      value={recipients}
-                      onChange={(e) => setRecipients(e.target.value)}
-                      rows={4}
-                      autoFocus
-                      placeholder={`Ej.
+      <textarea
+        value={recipients}
+        onChange={(e) => setRecipients(e.target.value)}
+        rows={4}
+        placeholder={`Ej.
 juan@gmail.com
 pedro@gmail.com`}
-                      className="w-full resize-none rounded-xl border border-gray-200 px-4 py-3 text-sm leading-6 text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-[#007f63] focus:ring-2 focus:ring-[#007f63]/10"
-                    />
+        className="w-full resize-none rounded-xl border border-gray-200 px-4 py-3 text-sm leading-6 text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-[#007f63] focus:ring-2 focus:ring-[#007f63]/10"
+      />
 
-                    <p className="mt-2 text-xs text-gray-400">
-                      Podés ingresar varios correos separados por coma, punto y coma o salto de línea.
-                    </p>
+      <p className="mt-2 text-xs text-gray-400">
+        Podés ingresar varios correos separados por coma, punto y coma o salto de línea.
+      </p>
 
-                  </div>
+    </div>
 
-                  <div className="flex gap-3">
+    <div className="flex gap-3">
 
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowEmailForm(false);
-                        setRecipients("");
-                      }}
-                      className="flex-1 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-600 transition hover:bg-gray-50"
-                    >
-                      Cancelar
-                    </button>
+      <button
+        type="button"
+        onClick={() => setRecipients("")}
+        className="flex-1 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-600 transition hover:bg-gray-50"
+      >
+        Cancelar
+      </button>
 
-                    <button
-                      type="button"
-                      onClick={handleOpenGmail}
-                      disabled={!recipients.trim()}
-                      className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-[#006b55] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#005c49] disabled:cursor-not-allowed disabled:opacity-40"
-                    >
-                      <Mail size={18} />
-                      Abrir Gmail
-                    </button>
+      <button
+        type="button"
+        onClick={handleOpenGmail}
+        disabled={!recipients.trim()}
+        className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-[#006b55] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#005c49] disabled:cursor-not-allowed disabled:opacity-40"
+      >
+        <Mail size={18} />
+        Abrir Gmail
+      </button>
 
-                  </div>
+    </div>
 
-                </div>
-              )}
+    <button
+      type="button"
+      onClick={handleCopy}
+      className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
+    >
+      {copied ? (
+        <>
+          <Check size={18} />
+          Enlace copiado
+        </>
+      ) : (
+        <>
+          <Copy size={18} />
+          Copiar enlace
+        </>
+      )}
+    </button>
 
-            </div>
+  </div>
+
+</div>
 
             {/* INFO */}
             <div className="mt-4 rounded-2xl bg-[#eef8f5] p-4">

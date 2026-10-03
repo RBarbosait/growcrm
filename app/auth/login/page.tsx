@@ -10,6 +10,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { supabase } from "@/lib/supabase"
+import { WaitOverlay } from "@/components/ui/wait-overlay"
+
+const loginMessages = [
+  "Verificando tus datos...",
+  "Preparando el acceso a tu club...",
+  "Ya casi estás dentro...",
+]
 
 
 export default function LoginPage() {
@@ -23,23 +30,30 @@ const handleLogin = async (e: React.FormEvent) => {
   e.preventDefault()
   setIsLoading(true)
 
-  const { error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  })
+  try {
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    })
 
-  setIsLoading(false)
+    if (error) {
+      alert(error.message)
+      return
+    }
 
-  if (error) {
-    alert(error.message)
-    return
+    router.push("/dashboard")
+  } catch (error) {
+    console.error("LOGIN ERROR:", error)
+    alert("No se pudo iniciar sesión. Intentá nuevamente.")
+  } finally {
+    setIsLoading(false)
   }
-
-  router.push("/dashboard")
 }
 
 
 const handleGoogleLogin = async () => {
+  setIsLoading(true)
+  try {
   console.log("URL", process.env.NEXT_PUBLIC_SUPABASE_URL)
   console.log("ORIGIN", window.location.origin)
 
@@ -53,9 +67,17 @@ const result = await supabase.auth.signInWithOAuth({
 
 console.log(result.data.url)
 
-window.location.href = result.data.url!
+if (!result.data.url) throw new Error("No se recibió el enlace de Google")
+window.location.href = result.data.url
+  } catch (error) {
+    console.error("GOOGLE LOGIN ERROR:", error)
+    alert("No se pudo iniciar el acceso con Google.")
+    setIsLoading(false)
+  }
 }
   return (
+    <>
+    <WaitOverlay open={isLoading} messages={loginMessages} label="Iniciando sesión" />
     <div className="relative min-h-screen overflow-hidden bg-white">
       <div className="absolute inset-0 -z-10 overflow-hidden">
         <div className="absolute -top-52 left-1/2 h-[700px] w-[700px] -translate-x-1/2 rounded-full bg-emerald-200/25 blur-[160px]" />
@@ -154,5 +176,6 @@ window.location.href = result.data.url!
         </div>
       </div>
     </div>
+    </>
   )
 }
