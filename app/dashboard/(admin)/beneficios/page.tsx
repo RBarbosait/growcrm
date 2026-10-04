@@ -191,7 +191,7 @@ export default function BenefitsAdminPage() {
     <main className="min-h-screen bg-[#f5faf8] text-[#092f35]">
       <WaitOverlay open={saving} label="Guardando beneficio" messages={["Guardando el beneficio...", "Actualizando el espacio de socios...", "Ya casi está listo..."]} />
       <div className="mx-auto max-w-7xl px-5 py-8 sm:px-8 sm:py-10">
-        <button type="button" onClick={() => router.push("/dashboard")} className="mb-7 inline-flex items-center gap-2 text-sm font-semibold text-zinc-500 transition hover:text-emerald-800">
+        <button type="button" onClick={() => router.push("/dashboard/admin")} className="mb-7 inline-flex items-center gap-2 text-sm font-semibold text-zinc-500 transition hover:text-emerald-800">
           <ArrowLeft className="h-4 w-4" /> Volver al dashboard
         </button>
 

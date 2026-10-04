@@ -43,7 +43,7 @@ export default function EditPropertyPage() {
     })
 
     setLoading(false)
-    router.push("/dashboard?updated=1")
+    router.push("/dashboard/admin?updated=1")
   }
 
   if (!property) return <div className="p-8">Cargando...</div>

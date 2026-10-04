@@ -457,8 +457,8 @@ const filteredPending = useMemo(() => {
 
     return rejected.filter(
       (request) =>
-        request.user.name?.toLowerCase().includes(value) ||
-        request.user.email.toLowerCase().includes(value)
+        request.user?.name?.toLowerCase().includes(value) ||
+        request.user?.email.toLowerCase().includes(value)
     );
   }, [rejected, search]);
 

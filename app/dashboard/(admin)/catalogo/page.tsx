@@ -105,6 +105,15 @@ const [loadingEditAttributes, setLoadingEditAttributes] =
           clubError
         )
       }
+      
+      const {
+  data: { session },
+  error: sessionError,
+} = await supabase.auth.getSession()
+
+if (sessionError || !session) {
+  throw new Error("No se encontró una sesión activa.")
+}
 
       const response = await fetch(
         `${API_URL}/club/${clubId}/products`,
@@ -408,7 +417,7 @@ attributes: product.attributes,
           {/* BACK */}
 
           <Link
-            href="/dashboard"
+            href="/dashboard/admin"
             className="mb-8 inline-flex items-center gap-2 text-sm font-medium text-zinc-500 transition hover:text-emerald-800"
           >
             ← Volver al dashboard
@@ -879,7 +888,7 @@ className="h-9 rounded-full border-red-200 px-2 text-xs text-red-600 hover:bg-re
               </p>
 
               <Link
-                href="/dashboard"
+                href="/dashboard/admin"
                 className="text-sm font-medium text-zinc-600 transition hover:text-emerald-800"
               >
                 ← Volver al dashboard
