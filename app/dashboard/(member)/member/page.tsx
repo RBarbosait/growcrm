@@ -176,6 +176,8 @@ export default function MemberDashboardPage() {
     )
   }
 
+  const activeClubId = data.club.id
+
   async function saveMemberProfile(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setSavingProfile(true)
@@ -185,7 +187,7 @@ export default function MemberDashboardPage() {
       const session = authData.session
       if (authError || !session) throw new Error("Tu sesión venció. Volvé a ingresar.")
 
-      const response = await fetch(`${API_URL}/club/${data.club.id}/member-profile`, {
+      const response = await fetch(`${API_URL}/club/${activeClubId}/member-profile`, {
         method: "PUT",
         headers: {
           Authorization: `Bearer ${session.access_token}`,
