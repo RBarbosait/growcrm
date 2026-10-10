@@ -10,6 +10,7 @@ import {
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+import ProductImageField from "@/components/dashboard/product-image-field"
 import {
   Card,
   CardContent,
@@ -50,6 +51,7 @@ export default function NuevoProductoPage() {
 
   const [formValues, setFormValues] =
     useState<FormValues>({})
+  const [productImageUrl, setProductImageUrl] = useState("")
 
   const [loadingCategories, setLoadingCategories] =
     useState(true)
@@ -138,6 +140,10 @@ export default function NuevoProductoPage() {
   ) {
     const value = formValues[attribute.slug]
 
+    if (attribute.type === "image") {
+      return !productImageUrl
+    }
+
     if (
       value === undefined ||
       value === null ||
@@ -208,6 +214,7 @@ export default function NuevoProductoPage() {
 
       const attributes = {
         ...formValues,
+        imagen: productImageUrl,
       }
 
       const name =
@@ -268,11 +275,7 @@ export default function NuevoProductoPage() {
                 ? attributes.marca
                 : null,
 
-            imageUrl:
-              typeof attributes.imagen ===
-              "string"
-                ? attributes.imagen
-                : null,
+            imageUrl: productImageUrl || null,
           }),
         }
       )
@@ -424,13 +427,24 @@ export default function NuevoProductoPage() {
 
               </div>
 
-{/* DYNAMIC ATTRIBUTES */}
+              <div>
+                <label className="mb-2 block text-sm font-medium text-zinc-700">
+                  Foto del producto
+                </label>
+                <ProductImageField
+                  value={productImageUrl}
+                  onChange={setProductImageUrl}
+                />
+              </div>
+
+              {/* DYNAMIC ATTRIBUTES */}
 
 {selectedCategory && (
   <div className="space-y-6 border-t border-zinc-100 pt-6">
 
     {selectedCategory.attributes
       .slice()
+      .filter((attribute) => attribute.type !== "image")
       .sort(
         (a, b) =>
           a.sortOrder -
@@ -805,12 +819,15 @@ function DynamicField({
         {requiredMark}
       </label>
 
+      {attribute.type === "image" ? (
+        <ProductImageField
+          value={typeof value === "string" ? value : ""}
+          onChange={onChange}
+        />
+      ) : (
+
       <input
-        type={
-          attribute.type === "image"
-            ? "url"
-            : "text"
-        }
+        type="text"
         value={
           typeof value === "string"
             ? value
@@ -819,13 +836,10 @@ function DynamicField({
         onChange={(e) =>
           onChange(e.target.value)
         }
-        placeholder={
-          attribute.type === "image"
-            ? "URL de imagen"
-            : ""
-        }
+        placeholder=""
         className="h-12 w-full rounded-xl border border-zinc-200 bg-white px-4 text-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
       />
+      )}
 
     </div>
   )

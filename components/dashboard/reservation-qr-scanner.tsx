@@ -12,6 +12,7 @@ export default function ReservationQRScanner({ onScan, onClose }: Props) {
 
   useEffect(() => {
     let active = true
+    let scanHandled = false
     let stopScanning: (() => void) | undefined
 
     async function start() {
@@ -19,7 +20,12 @@ export default function ReservationQRScanner({ onScan, onClose }: Props) {
         if (!navigator.mediaDevices?.getUserMedia) throw new Error("camera-unavailable")
         const reader = new BrowserQRCodeReader()
         const controls = await reader.decodeFromVideoDevice(undefined, videoRef.current!, (result) => {
-          if (result && active) onScan(result.getText())
+          if (result && active && !scanHandled) {
+            scanHandled = true
+            active = false
+            stopScanning?.()
+            onScan(result.getText())
+          }
         })
         if (!active) controls.stop()
         else stopScanning = () => controls.stop()

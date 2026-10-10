@@ -120,10 +120,14 @@ try {
 
     if (!response.ok) {
       if (response.status === 409) {
+        if (data.code === "ROLE_CONFLICT") {
+          alert(data.error)
+          return
+        }
         alert(
           data.error === "Membership request already pending"
             ? "Ya existe una solicitud pendiente para este email."
-            : "Este usuario ya pertenece al club."
+            : data.error || "Este usuario ya pertenece al club."
         )
         return
       }
@@ -371,6 +375,9 @@ try {
                   icon={<Mail className="h-4 w-4" />}
                   required
                 />
+                <p className="-mt-3 text-xs leading-5 text-zinc-500">
+                  Usá una cuenta distinta si ya sos administrador en GrowCRM. Si usás Gmail, podés probar un alias como nombre+socio@gmail.com; llega al mismo buzón y crea un acceso separado.
+                </p>
 
                 <Field
                   label="Teléfono"

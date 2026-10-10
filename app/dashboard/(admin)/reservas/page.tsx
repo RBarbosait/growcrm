@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import { ArrowLeft, CalendarDays, Check, Clock3, Package, ScanLine, X } from "lucide-react"
 import { WaitOverlay } from "@/components/ui/wait-overlay"
@@ -34,15 +34,21 @@ export default function ReservationsPage() {
   const [reservations, setReservations] = useState<Reservation[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
+  const [successNotice, setSuccessNotice] = useState("")
   const [filter, setFilter] = useState<(typeof filters)[number]["id"]>("PENDING")
   const [processingId, setProcessingId] = useState<string | null>(null)
   const [selectedReservation, setSelectedReservation] = useState<Reservation | null>(null)
   const [scannerOpen, setScannerOpen] = useState(false)
   const [whatsAppFollowUp, setWhatsAppFollowUp] = useState<{ phone: string; message: string; note: string } | null>(null)
   const [messageCopied, setMessageCopied] = useState(false)
+  const whatsAppMonitorRef = useRef<number | null>(null)
 
   useEffect(() => {
     void loadReservations()
+  }, [])
+
+  useEffect(() => () => {
+    if (whatsAppMonitorRef.current !== null) window.clearInterval(whatsAppMonitorRef.current)
   }, [])
 
   async function getAuthContext() {
@@ -98,6 +104,7 @@ export default function ReservationsPage() {
       return
     }
     setError("")
+    setSuccessNotice("")
     setSelectedReservation(reservation)
     window.history.replaceState(null, "", `/dashboard/reservas?reserva=${encodeURIComponent(reservation.id)}`)
     if (reservation.status === "PENDING" || reservation.status === "APPROVED") {
@@ -112,8 +119,24 @@ export default function ReservationsPage() {
   async function updateReservation(reservationId: string, status: "APPROVED" | "REJECTED" | "COMPLETED") {
     if (processingId) return
     const currentReservation = reservations.find((item) => item.id === reservationId) || selectedReservation
+    let whatsAppWindow: Window | null = null
+    if (status === "APPROVED" && currentReservation) {
+      const phone = normalizeWhatsAppPhone(currentReservation.user.phone || "")
+      if (phone) {
+        try {
+          whatsAppWindow = window.open("about:blank", "_blank")
+          if (whatsAppWindow) {
+            whatsAppWindow.document.write("<!doctype html><title>Abriendo WhatsApp</title><p style=\"font:16px system-ui;padding:24px\">La reserva se está aprobando. Abriendo WhatsApp…</p>")
+            whatsAppWindow.document.close()
+          }
+        } catch {
+          whatsAppWindow = null
+        }
+      }
+    }
     setProcessingId(reservationId)
     setError("")
+    setSuccessNotice("")
     setWhatsAppFollowUp(null)
     setMessageCopied(false)
     try {
@@ -127,17 +150,55 @@ export default function ReservationsPage() {
       if (!response.ok) throw new Error(result.error || "No se pudo actualizar la reserva.")
       setReservations((current) => current.map((reservation) => reservation.id === reservationId ? result : reservation))
       setSelectedReservation((current) => current?.id === reservationId ? result : current)
+      if (status === "COMPLETED") setSuccessNotice("Reserva marcada como entregada y guardada.")
       if (status === "APPROVED" && currentReservation) {
         const name = result.user?.name || currentReservation.user.name || ""
-        const message = `Hola${name ? ` ${name}` : ""}, tu pedido de ${result.product.name} (${reservationQuantityLabel(result)}) fue aprobado y está listo para retirar. Presentá el QR de tu reserva al retirarlo.`
+        const message = `Hola${name ? ` ${name}` : ""}, tu pedido de ${result.product.name} (${reservationQuantityLabel(result)}) fue aprobado y ya podés retirarlo por el club. Presentá el QR de tu reserva al retirarlo.`
         const rawPhone = result.user?.phone || currentReservation.user.phone || ""
         const phone = normalizeWhatsAppPhone(rawPhone) || ""
-        const note = phone
-          ? "La reserva ya está aprobada. Tocá “Abrir WhatsApp” para preparar el aviso. Si no se abre, puede que WhatsApp no esté instalado o que WhatsApp Web no tenga una sesión iniciada."
-          : "La reserva quedó aprobada, pero el teléfono del socio no tiene un código de país válido para abrir WhatsApp. Podés copiar el mensaje y avisarle por otro medio."
-        setWhatsAppFollowUp({ phone, message, note })
+        const fallback = (note: string) => {
+          setMessageCopied(false)
+          setWhatsAppFollowUp({ phone, message, note })
+        }
+
+        if (!phone) {
+          fallback("La reserva quedó aprobada, pero el teléfono del socio no tiene un código de país válido. Podés copiar este mensaje y avisarle por otro medio.")
+        } else if (!whatsAppWindow || whatsAppWindow.closed) {
+          fallback("La reserva está aprobada y lista para retirar. No se pudo abrir WhatsApp automáticamente; copiá el mensaje para avisarle al socio.")
+        } else {
+          const whatsappUrl = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`
+          try {
+            whatsAppWindow.location.replace(whatsappUrl)
+            const popup = whatsAppWindow
+            let checks = 0
+            if (whatsAppMonitorRef.current !== null) window.clearInterval(whatsAppMonitorRef.current)
+            whatsAppMonitorRef.current = window.setInterval(() => {
+              checks += 1
+              if (popup.closed) {
+                if (whatsAppMonitorRef.current !== null) window.clearInterval(whatsAppMonitorRef.current)
+                whatsAppMonitorRef.current = null
+                fallback("La reserva está aprobada y lista para retirar. WhatsApp se cerró o no quedó abierto; copiá el mensaje para avisarle al socio.")
+                return
+              }
+              if (checks >= 20) {
+                try {
+                  if (popup.location.href === "about:blank") {
+                    if (whatsAppMonitorRef.current !== null) window.clearInterval(whatsAppMonitorRef.current)
+                    whatsAppMonitorRef.current = null
+                    fallback("La reserva está aprobada y lista para retirar. WhatsApp no llegó a abrirse; copiá el mensaje para avisarle al socio.")
+                  }
+                } catch {
+                  // WhatsApp cargó en otro origen: el navegador impide inspeccionar su contenido.
+                }
+              }
+            }, 500)
+          } catch {
+            fallback("La reserva está aprobada y lista para retirar. No se pudo abrir WhatsApp; copiá el mensaje para avisarle al socio.")
+          }
+        }
       }
     } catch (actionError) {
+      if (whatsAppWindow && !whatsAppWindow.closed) whatsAppWindow.close()
       setError(actionError instanceof Error ? actionError.message : "No se pudo actualizar la reserva.")
     } finally {
       setProcessingId(null)
@@ -172,6 +233,7 @@ export default function ReservationsPage() {
         <button type="button" onClick={() => setScannerOpen(true)} className="mt-6 inline-flex items-center gap-2 rounded-xl bg-emerald-800 px-4 py-3 text-sm font-semibold text-white hover:bg-emerald-900"><ScanLine className="h-4 w-4" /> Escanear QR de reserva</button>
 
         {error && <p role="alert" className="mt-6 rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm font-medium text-red-800">{error}</p>}
+        {successNotice && <p role="status" className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm font-medium text-emerald-800">{successNotice}</p>}
 
         {whatsAppFollowUp && <section role="status" className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-950 sm:p-5"><h2 className="font-bold">Pedido aprobado y listo para retirar</h2><p className="mt-1 text-sm">{whatsAppFollowUp.note}</p><blockquote className="mt-3 rounded-xl bg-white/80 p-3 text-sm">{whatsAppFollowUp.message}</blockquote><div className="mt-3 flex flex-wrap gap-2"><button type="button" onClick={() => { void navigator.clipboard.writeText(whatsAppFollowUp.message).then(() => setMessageCopied(true)).catch(() => setError("No se pudo copiar automáticamente. Seleccioná el mensaje para copiarlo.")) }} className="rounded-xl border border-emerald-300 bg-white px-4 py-2 text-sm font-semibold">{messageCopied ? "Mensaje copiado" : "Copiar mensaje"}</button>{whatsAppFollowUp.phone && <a href={`https://wa.me/${whatsAppFollowUp.phone}?text=${encodeURIComponent(whatsAppFollowUp.message)}`} target="_blank" rel="noreferrer" className="rounded-xl bg-emerald-800 px-4 py-2 text-sm font-semibold text-white">Abrir WhatsApp</a>}<button type="button" onClick={() => setWhatsAppFollowUp(null)} className="rounded-xl px-3 py-2 text-sm font-semibold text-emerald-900">Cerrar</button></div></section>}
 

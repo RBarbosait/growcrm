@@ -435,7 +435,7 @@ export default function MemberDashboardPage() {
                         {product.brand && <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">{product.brand}</p>}
                         <h3 className="mt-1 text-xl font-bold tracking-tight">{product.name}</h3>
                       </div>
-                      <span className={`mt-1 h-2.5 w-2.5 shrink-0 rounded-full ${product.stock > 0 ? "bg-emerald-500" : "bg-amber-400"}`} title={product.stock > 0 ? "Disponible" : "Consultar disponibilidad"} />
+                      <span className={`mt-1 h-2.5 w-2.5 shrink-0 rounded-full ${memberProductAvailability(product) === "Sin disponibilidad" ? "bg-amber-400" : memberProductAvailability(product) === "Última unidad disponible" ? "bg-orange-500" : "bg-emerald-500"}`} title={memberProductAvailability(product)} />
                     </div>
                     {product.description && <p className="mt-3 line-clamp-3 text-sm leading-6 text-zinc-500">{product.description}</p>}
                     <div className="mt-5 flex items-end justify-between border-t border-zinc-100 pt-4">
@@ -445,9 +445,9 @@ export default function MemberDashboardPage() {
                           {product.salePrice == null ? "Consultar" : formatPrice(product.salePrice)}
                         </p>
                       </div>
-                      <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-800">
+                      <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold ${memberProductAvailability(product) === "Última unidad disponible" ? "bg-orange-50 text-orange-800" : memberProductAvailability(product) === "Sin disponibilidad" ? "bg-amber-50 text-amber-800" : "bg-emerald-50 text-emerald-800"}`}>
                         <Tag className="h-3.5 w-3.5" />
-                        {product.stock > 0 ? "Disponible" : "Consultar"}
+                        {memberProductAvailability(product)}
                       </span>
                     </div>
                   </div>
@@ -608,8 +608,6 @@ function MemberProductModal({
     unidad: { singular: "unidad", plural: "unidades", short: "unid." },
   }
   const unit = unitLabels[stockUnit] || { singular: stockUnit, plural: stockUnit, short: stockUnit }
-  const stockPercent = stock === 0 ? 0 : stock < threshold ? 28 : stock < threshold * 2 ? 62 : 100
-  const stockLabel = stock === 0 ? "Sin disponibilidad" : stock < threshold ? "Pocas unidades" : "Disponible para socios"
   const isFlower = product.category?.toLowerCase().includes("flor")
   const configuredWeights = Array.isArray(product.attributes?.["pesos-disponibles"])
     ? (product.attributes["pesos-disponibles"] as unknown[]).filter((weight): weight is number => typeof weight === "number" && Number.isFinite(weight) && weight > 0).sort((a, b) => a - b)
@@ -619,6 +617,16 @@ function MemberProductModal({
   const selectedWeight = weightOptions.includes(packageWeight) ? packageWeight : weightOptions[0]
   const quantity = Number((packageCount * selectedWeight).toFixed(2))
   const maxPackages = Math.floor((stock + 1e-9) / selectedWeight)
+  const availablePackages = Math.floor((stock + 1e-9) / weightOptions[0])
+  const isLastPackage = availablePackages === 1
+  const stockPercent = stock === 0 ? 0 : stock < threshold ? 28 : stock < threshold * 2 ? 62 : 100
+  const stockLabel = availablePackages === 0
+    ? "Sin disponibilidad"
+    : isLastPackage
+      ? "Última unidad disponible"
+      : stock < threshold
+        ? "Pocas unidades"
+        : "Disponible para socios"
 
   useEffect(() => {
     if (!weightOptions.includes(packageWeight)) {
@@ -665,9 +673,8 @@ function MemberProductModal({
               <div className="flex items-center justify-between gap-4">
                 <div>
                   <p className="text-sm font-bold text-[#092f35]">Disponibilidad</p>
-                  <p className={`mt-1 text-sm font-medium ${stock === 0 ? "text-zinc-500" : stock < threshold ? "text-amber-700" : "text-emerald-700"}`}>{stockLabel}</p>
+                  <p className={`mt-1 text-sm font-medium ${availablePackages === 0 ? "text-zinc-500" : isLastPackage || stock < threshold ? "text-amber-700" : "text-emerald-700"}`}>{stockLabel}</p>
                 </div>
-                <span className="text-xs font-semibold text-zinc-500">{formatQuantity(stock)} {unit.short}</span>
               </div>
               <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-zinc-200">
                 <div className={`h-full rounded-full transition-all ${stock === 0 ? "bg-zinc-300" : stock < threshold ? "bg-amber-400" : "bg-emerald-500"}`} style={{ width: `${stockPercent}%` }} />
@@ -677,8 +684,6 @@ function MemberProductModal({
             <div className="mt-5 flex items-center justify-between rounded-2xl border border-zinc-100 px-5 py-4">
               <div>
                   <p className="text-sm font-bold text-[#092f35]">Cantidad a solicitar</p>
-                  <p className="mt-1 text-xs text-zinc-500">Stock disponible: {formatQuantity(stock)} {stock === 1 ? unit.singular : unit.plural}</p>
-                  {product.minStock > 0 && <p className="mt-1 text-xs text-zinc-400">Nivel mínimo de stock: {formatQuantity(product.minStock)} {product.minStock === 1 ? unit.singular : unit.plural}</p>}
                   {isFlower && <p className="mt-1 text-xs text-zinc-500">Se vende en múltiplos de {formatQuantity(selectedWeight)} g</p>}
               </div>
               <div className="flex items-center gap-3">
@@ -771,6 +776,18 @@ function formatPrice(value: number) {
 
 function formatQuantity(value: number) {
   return new Intl.NumberFormat("es-UY", { maximumFractionDigits: 2 }).format(value)
+}
+
+function memberProductAvailability(product: ClubProduct) {
+  const stock = Math.max(0, product.stock || 0)
+  const weights = product.category?.toLowerCase().includes("flor") && Array.isArray(product.attributes?.["pesos-disponibles"])
+    ? (product.attributes["pesos-disponibles"] as unknown[]).filter((weight): weight is number => typeof weight === "number" && Number.isFinite(weight) && weight > 0)
+    : []
+  const saleStep = weights.length ? Math.min(...weights) : 1
+  const availablePackages = Math.floor((stock + 1e-9) / saleStep)
+  if (availablePackages === 0) return "Sin disponibilidad"
+  if (availablePackages === 1) return "Última unidad disponible"
+  return stock < Math.max(1, product.minStock || 5) ? "Pocas unidades" : "Disponible"
 }
 
 function reservationStatusLabel(status: MemberReservation["status"]) {

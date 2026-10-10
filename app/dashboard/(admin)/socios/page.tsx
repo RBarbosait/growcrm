@@ -213,11 +213,10 @@ useEffect(() => {
         }
       );
 
+      const result = await response.json().catch(() => ({}));
       if (!response.ok) {
-        throw new Error("No se pudo actualizar la solicitud");
+        throw new Error(result.error || "No se pudo actualizar la solicitud");
       }
-
-      const result = await response.json();
 
       if (action === "approve") {
         const approvedRequest = result.request;
@@ -231,7 +230,7 @@ Tu ingreso a ${clubName} fue aprobado. Tu usuario ya está asociado al club y po
 
 ${loginUrl}
 
-Ingresá con tu email y la contraseña que elegiste al registrarte.
+Ingresá con tu email y la contraseña asociada a tu cuenta de GrowCRM. Si es tu primera cuenta, usá la contraseña que elegiste al registrarte.
 
 ¡Te damos la bienvenida!`;
 
@@ -256,7 +255,7 @@ Ingresá con tu email y la contraseña que elegiste al registrarte.
     } catch (error) {
       if (gmailTab && !gmailTab.closed) gmailTab.close();
       console.error("MEMBERSHIP REQUEST UPDATE ERROR:", error);
-      alert("No se pudo actualizar la solicitud.");
+      alert(error instanceof Error ? error.message : "No se pudo actualizar la solicitud.");
     } finally {
       setProcessingId(null);
     }

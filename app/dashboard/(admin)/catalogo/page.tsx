@@ -14,6 +14,7 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { supabase } from "@/lib/supabase"
+import ProductImageField from "@/components/dashboard/product-image-field"
 
 const API_URL =
   process.env.NEXT_PUBLIC_API_URL ||
@@ -202,6 +203,10 @@ if (sessionError || !session) {
             name: product.name,
             category: product.category,
             brand: product.brand,
+            imageUrl:
+              typeof product.attributes?.imagen === "string"
+                ? product.attributes.imagen
+                : product.imageUrl,
             purchasePrice:
               product.purchasePrice,
             salePrice: product.salePrice,
@@ -914,7 +919,7 @@ className="h-9 rounded-full border-red-200 px-2 text-xs text-red-600 hover:bg-re
     setEditingProduct(null)
     setEditAttributes([])
   }}
-  onSave={handleSaveProduct}
+          onSave={handleSaveProduct}
 />
       )}
     </>
@@ -1002,8 +1007,20 @@ function EditProductModal({
 
         <form
           onSubmit={handleSubmit}
-          className="space-y-6 p-6"
+          className="space-y-6 p-4 sm:p-6"
         >
+
+<div>
+  <label className="mb-2 block text-sm font-medium text-zinc-700">Foto del producto</label>
+  <ProductImageField
+    value={form.imageUrl || ""}
+    onChange={(url) => setForm((current) => ({
+      ...current,
+      imageUrl: url || null,
+      attributes: { ...(current.attributes || {}), imagen: url },
+    }))}
+  />
+</div>
 
 {loadingAttributes ? (
   <div className="py-10 text-center text-sm text-zinc-500">
@@ -1018,6 +1035,7 @@ function EditProductModal({
 
     {attributes
       .slice()
+      .filter((attribute) => attribute.type !== "image")
       .sort(
         (a, b) =>
           a.sortOrder - b.sortOrder
@@ -1350,12 +1368,15 @@ function DynamicEditField({
         {requiredMark}
       </label>
 
+      {attribute.type === "image" ? (
+        <ProductImageField
+          value={typeof value === "string" ? value : ""}
+          onChange={onChange}
+        />
+      ) : (
+
       <input
-        type={
-          attribute.type === "image"
-            ? "url"
-            : "text"
-        }
+        type="text"
         value={
           typeof value === "string"
             ? value
@@ -1364,13 +1385,10 @@ function DynamicEditField({
         onChange={(e) =>
           onChange(e.target.value)
         }
-        placeholder={
-          attribute.type === "image"
-            ? "URL de imagen"
-            : ""
-        }
+        placeholder=""
         className="h-11 w-full rounded-xl border border-zinc-200 bg-white px-4 text-sm outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-100"
       />
+      )}
     </div>
   )
 }

@@ -13,7 +13,6 @@ import {
   CalendarDays,
   Check,
   ChevronRight,
-  ImagePlus,
   Sparkles,
   LogOut,
   Package,
@@ -34,6 +33,7 @@ import {
 } from "@/components/ui/card"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { WaitOverlay } from "@/components/ui/wait-overlay"
+import ProductImageField from "@/components/dashboard/product-image-field"
 
 
 const API_URL =
@@ -1010,6 +1010,10 @@ const [saving, setSaving] = useState(false)
     onClose={() =>
       setViewingProduct(null)
     }
+    onEdit={() => {
+      setEditingProduct(viewingProduct)
+      setViewingProduct(null)
+    }}
   />
 
 )}
@@ -1580,12 +1584,32 @@ function ProductPentagram({
 function ProductDetailModal({
   product,
   onClose,
+  onEdit,
 }: {
   product: Product
   onClose: () => void
+  onEdit: () => void
 }) {
 const stock = Number(product.stock) || 0
 const minStock = Number(product.minStock) || 0
+const attributes = product.attributes || {}
+const stockUnit = typeof attributes.stockUnit === "string" && attributes.stockUnit.trim()
+  ? attributes.stockUnit.trim()
+  : "unidad"
+const unitLabels: Record<string, string> = {
+  g: "g",
+  kg: "kg",
+  ml: "ml",
+  l: "l",
+  unidad: stock === 1 ? "unidad" : "unidades",
+}
+const displayUnit = unitLabels[stockUnit] || stockUnit
+const isFlower = product.category?.toLowerCase().includes("flor") || false
+const configuredWeights = Array.isArray(attributes["pesos-disponibles"])
+  ? (attributes["pesos-disponibles"] as unknown[]).filter(
+      (weight): weight is number => typeof weight === "number" && Number.isFinite(weight) && weight > 0
+    ).sort((a, b) => a - b)
+  : []
 
 const isOutOfStock = stock <= 0
 
@@ -1614,129 +1638,108 @@ const stockStatus =
           ? "Cerca del mínimo"
           : "Stock"
 
+  const profileAxes = [
+    ["potencia", "Potencia"],
+    ["euforia", "Euforia"],
+    ["energia", "Energía"],
+    ["relajacion", "Relajación"],
+    ["sociabilidad", "Sociabilidad"],
+  ] as const
+  const knownAttributes = new Set([
+    "stockUnit", "commercialTag", "pesos-disponibles", "potencia", "euforia",
+    "energia", "relajacion", "sociabilidad",
+  ])
+  const extraAttributes = Object.entries(attributes).filter(([key, value]) =>
+    !knownAttributes.has(key) && value !== null && value !== undefined && value !== ""
+  )
+  const commercialTag = getCommercialTag(attributes)
+  const formatAttribute = (value: unknown): string => {
+    if (Array.isArray(value)) return value.map(formatAttribute).join(", ")
+    if (typeof value === "object" && value !== null) return JSON.stringify(value)
+    if (typeof value === "boolean") return value ? "Sí" : "No"
+    return String(value)
+  }
+  const attributeLabel = (key: string) => key
+    .replace(/([A-Z])/g, " $1")
+    .replace(/[-_]/g, " ")
+    .replace(/^./, (letter) => letter.toUpperCase())
+
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-
-      <button
-        type="button"
-        aria-label="Cerrar"
-        onClick={onClose}
-        className="absolute inset-0 bg-black/30 backdrop-blur-sm"
-      />
-
-      <div className="relative z-10 max-h-[94vh] w-full max-w-2xl overflow-y-auto rounded-[28px] bg-white shadow-2xl">
-
-        {/* IMAGEN */}
-
-        <div className="relative h-64 overflow-hidden bg-zinc-100 sm:h-80">
-
-          {product.imageUrl ? (
-            <img
-              src={product.imageUrl}
-              alt={product.name}
-              className="h-full w-full object-cover"
-            />
-          ) : (
-            <ProductImageFallback
-              category={product.category}
-            />
-          )}
-
-          <button
-            type="button"
-            onClick={onClose}
-            className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/95 text-zinc-500 shadow-sm"
-          >
-            <X className="h-5 w-5" />
-          </button>
-
-
-
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6" role="dialog" aria-modal="true" aria-label={`Detalle de ${product.name}`}>
+      <button type="button" aria-label="Cerrar detalle" onClick={onClose} className="absolute inset-0 bg-[#062f2a]/55 backdrop-blur-sm" />
+      <section className="relative z-10 flex max-h-[94vh] w-full max-w-3xl flex-col overflow-hidden rounded-[28px] bg-white shadow-2xl">
+        <div className="relative h-52 shrink-0 overflow-hidden bg-zinc-100 sm:h-64">
+          {product.imageUrl ? <img src={product.imageUrl} alt={product.name} className="h-full w-full object-cover" /> : <ProductImageFallback category={product.category} />}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-transparent" />
+          {product.category && <span className="absolute bottom-5 left-6 rounded-full bg-white/95 px-3.5 py-1.5 text-xs font-bold uppercase tracking-wide text-emerald-900">{product.category}</span>}
+          <button type="button" aria-label="Cerrar" onClick={onClose} className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/95 text-zinc-600 shadow-sm"><X className="h-5 w-5" /></button>
         </div>
 
-        {/* CONTENIDO */}
-
-        <div className="p-6 sm:p-8">
-
-          {product.category && (
-            <p className="text-xs font-semibold uppercase tracking-wider text-emerald-700">
-              {product.category}
-            </p>
-          )}
-
-          <h2 className="mt-2 text-3xl font-bold tracking-tight">
-            {product.name}
-          </h2>
-
-          {product.brand && (
-            <p className="mt-1 text-sm text-zinc-500">
-              {product.brand}
-            </p>
-          )}
-
-          <div className="mt-6 border-t border-zinc-100 pt-6">
-
-            <p className="text-sm text-zinc-400">
-              Precio
-            </p>
-
-            <p className="mt-1 text-3xl font-bold text-zinc-950">
-              {product.salePrice != null
-                ? `$${product.salePrice.toLocaleString("es-UY")}`
-                : "Consultar"}
-            </p>
-
+        <div className="min-h-0 flex-1 overflow-y-auto p-6 sm:p-8">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              {product.brand && <p className="text-xs font-bold uppercase tracking-[0.14em] text-emerald-700">{product.brand}</p>}
+              <h2 className="mt-1 text-3xl font-bold tracking-tight text-[#092f35]">{product.name}</h2>
+              {commercialTag && <span className={`mt-3 inline-flex rounded-full px-3 py-1 text-xs font-semibold ${commercialTag.className}`}>{commercialTag.label}</span>}
+            </div>
+            <div className="rounded-2xl bg-emerald-50 px-4 py-3">
+              <p className="text-xs font-medium text-emerald-800/65">Precio para socios</p>
+              <p className="mt-0.5 text-2xl font-extrabold text-emerald-800">{product.salePrice == null ? "Consultar" : `$${product.salePrice.toLocaleString("es-UY")}`}</p>
+            </div>
           </div>
 
-          {product.description && (
-            <div className="mt-6">
+          {product.description && <section className="mt-6"><h3 className="text-sm font-bold text-[#092f35]">Descripción</h3><p className="mt-2 whitespace-pre-line text-sm leading-7 text-zinc-600">{product.description}</p></section>}
 
-              <h3 className="text-sm font-semibold">
-                Descripción
-              </h3>
-
-              <p className="mt-2 text-sm leading-relaxed text-zinc-600">
-                {product.description}
-              </p>
-
+          <section className="mt-7 rounded-2xl border border-zinc-100 bg-zinc-50/80 p-5">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div><h3 className="text-sm font-bold text-[#092f35]">Disponibilidad</h3><p className={`mt-1 text-sm font-medium ${isOutOfStock ? "text-red-700" : isNearEmpty || isLowStock ? "text-amber-700" : "text-emerald-700"}`}>{stockStatus}</p></div>
+              <p className="text-lg font-bold text-[#092f35]">{stock} {displayUnit}</p>
             </div>
-          )}
+            <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-zinc-200"><div className={`h-full ${isOutOfStock ? "bg-red-500" : isNearEmpty || isLowStock ? "bg-amber-400" : "bg-emerald-500"}`} style={{ width: `${Math.min(100, minStock > 0 ? (stock / (minStock * 2)) * 100 : (stock / 10) * 100)}%` }} /></div>
+            <div className="mt-4 grid grid-cols-2 gap-3 text-sm sm:grid-cols-3">
+              <AdminProductDatum label="Stock mínimo" value={`${minStock} ${displayUnit}`} />
+              <AdminProductDatum label="Unidad de stock" value={displayUnit} />
+              {isFlower && configuredWeights.length > 0 && <AdminProductDatum label="Pesos ofrecidos" value={configuredWeights.map((weight) => `${weight} g`).join(" · ")} />}
+            </div>
+          </section>
 
-          {/* PENTAGRAMA */}
+          <section className="mt-5">
+            <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-zinc-500">Información de administración</h3>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              <AdminProductDatum label="Precio de compra" value={product.purchasePrice == null ? "—" : `$${product.purchasePrice.toLocaleString("es-UY")}`} />
+              <AdminProductDatum label="Precio de venta" value={product.salePrice == null ? "—" : `$${product.salePrice.toLocaleString("es-UY")}`} />
+              <AdminProductDatum label="Proveedor" value={product.provider || "—"} />
+              <AdminProductDatum label="Stock mínimo" value={`${minStock} ${displayUnit}`} />
+              <AdminProductDatum label="ID del producto" value={product.id} />
+              <AdminProductDatum label="Creado" value={new Date(product.createdAt).toLocaleDateString("es-UY")} />
+            </div>
+          </section>
 
-          {product.category?.toLowerCase() ===
-            "flor de marihuana" && (
-            <div className="mt-8 border-t border-zinc-100 pt-8">
-
-              <h3 className="text-lg font-bold">
-                Perfil de la flor
-              </h3>
-
-              <p className="mt-1 text-sm text-zinc-500">
-                Características del producto
-              </p>
-
-              <div className="mt-6 flex justify-center">
-<ProductPentagram
-  values={{
-    potencia: Number(product.attributes?.potencia) || 0,
-    euforia: Number(product.attributes?.euforia) || 0,
-    energia: Number(product.attributes?.energia) || 0,
-    relajacion: Number(product.attributes?.relajacion) || 0,
-    sociabilidad: Number(product.attributes?.sociabilidad) || 0,
-  }}
-/>
+          {isFlower && (
+            <section className="mt-7 rounded-[24px] bg-[#f5faf8] p-5 sm:p-7">
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-emerald-700">Perfil del producto</p>
+              <h3 className="mt-1 text-xl font-bold text-[#092f35]">Características de la flor</h3>
+              <div className="mt-4 flex justify-center"><ProductPentagram values={{ potencia: Number(attributes.potencia) || 0, euforia: Number(attributes.euforia) || 0, energia: Number(attributes.energia) || 0, relajacion: Number(attributes.relajacion) || 0, sociabilidad: Number(attributes.sociabilidad) || 0 }} /></div>
+              <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                {profileAxes.map(([key, label]) => <AdminProductDatum key={key} label={label} value={`${Number(attributes[key]) || 0} / 5`} />)}
+                {Object.entries(attributes).filter(([key]) => ["cbd", "thc"].includes(key.toLowerCase())).map(([key, value]) => <AdminProductDatum key={key} label={`${key.toUpperCase()} (%)`} value={`${formatAttribute(value)}%`} />)}
               </div>
-
-            </div>
+            </section>
           )}
 
+          {extraAttributes.length > 0 && <section className="mt-7"><h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-zinc-500">Otros datos del producto</h3><div className="grid grid-cols-2 gap-3 sm:grid-cols-3">{extraAttributes.map(([key, value]) => <AdminProductDatum key={key} label={attributeLabel(key)} value={formatAttribute(value)} />)}</div></section>}
         </div>
-
-      </div>
-
+        <div className="flex shrink-0 justify-end gap-3 border-t border-zinc-100 bg-white px-6 py-4 sm:px-8">
+          <Button type="button" variant="outline" onClick={onClose} className="rounded-full px-5">Cerrar</Button>
+          <Button type="button" onClick={onEdit} className="rounded-full bg-emerald-800 px-5 hover:bg-emerald-900"><Pencil className="mr-2 h-4 w-4" />Editar producto</Button>
+        </div>
+      </section>
     </div>
   )
+}
+
+function AdminProductDatum({ label, value }: { label: string; value: string }) {
+  return <div className="min-w-0 rounded-xl bg-white px-3.5 py-3 ring-1 ring-zinc-100"><p className="text-xs text-zinc-500">{label}</p><p className="mt-1 break-words text-sm font-semibold text-zinc-800">{value}</p></div>
 }
 
 /* =============================================================== */
@@ -1832,55 +1835,11 @@ className="space-y-6 p-4 sm:p-6"        >
               Imagen del producto
             </label>
 
-            <div className="mt-3 flex flex-col gap-4 sm:flex-row">
-
-              <div className="h-32 w-32 shrink-0 overflow-hidden rounded-2xl bg-zinc-100">
-
-                {form.imageUrl ? (
-
-                  <img
-                    src={form.imageUrl}
-                    alt={form.name}
-                    className="h-full w-full object-cover"
-                  />
-
-                ) : (
-
-                  <ProductImageFallback
-                    category={form.category}
-                  />
-
-                )}
-
-              </div>
-
-              <div className="flex flex-1 flex-col justify-center">
-
-                <div className="flex items-center gap-2 text-sm font-medium text-zinc-700">
-                  <ImagePlus className="h-4 w-4 text-emerald-700" />
-                  Imagen personalizada
-                </div>
-
-                <p className="mt-1 text-sm leading-relaxed text-zinc-400">
-                  Podés asociar una URL de imagen al producto.
-                  La subida directa de archivos la conectamos con Storage en el siguiente paso.
-                </p>
-
-                <input
-                  type="url"
-                  value={form.imageUrl || ""}
-                  onChange={(e) =>
-                    updateField(
-                      "imageUrl",
-                      e.target.value || null
-                    )
-                  }
-                  placeholder="https://..."
-                  className="mt-3 h-10 rounded-xl border border-zinc-200 px-3 text-sm outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
-                />
-
-              </div>
-
+            <div className="mt-3">
+              <ProductImageField
+                value={form.imageUrl || ""}
+                onChange={(url) => updateField("imageUrl", url || null)}
+              />
             </div>
 
           </div>
