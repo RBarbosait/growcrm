@@ -129,7 +129,7 @@ export default function ReservationsPage() {
       setSelectedReservation((current) => current?.id === reservationId ? result : current)
       if (status === "APPROVED" && currentReservation) {
         const name = result.user?.name || currentReservation.user.name || ""
-        const message = `Hola${name ? ` ${name}` : ""}, tu pedido de ${result.product.name} (${result.quantity} ${result.quantity === 1 ? "unidad" : "unidades"}) fue aprobado y está listo para retirar. Presentá el QR de tu reserva al retirarlo.`
+        const message = `Hola${name ? ` ${name}` : ""}, tu pedido de ${result.product.name} (${reservationQuantityLabel(result)}) fue aprobado y está listo para retirar. Presentá el QR de tu reserva al retirarlo.`
         const rawPhone = result.user?.phone || currentReservation.user.phone || ""
         const phone = normalizeWhatsAppPhone(rawPhone) || ""
         const note = phone
@@ -191,7 +191,7 @@ export default function ReservationsPage() {
                     {reservation.product.imageUrl ? <img src={reservation.product.imageUrl} alt="" className="h-16 w-16 rounded-2xl object-cover" /> : <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-800"><Package className="h-7 w-7" /></div>}
                     <div className="min-w-0">
                       <h2 className="truncate text-lg font-bold">{reservation.product.name}</h2>
-                      <p className="mt-1 text-sm text-zinc-500">{reservation.product.category || "Producto"} · {reservation.quantity} {reservation.quantity === 1 ? "unidad" : "unidades"}</p>
+                      <p className="mt-1 text-sm text-zinc-500">{reservation.product.category || "Producto"} · {reservationQuantityLabel(reservation)}</p>
                     </div>
                   </div>
                   <span className={`rounded-full px-3 py-1.5 text-xs font-bold ${reservationStatusClass(reservation.status)}`}>{reservationStatusLabel(reservation.status)}</span>
@@ -229,6 +229,13 @@ export default function ReservationsPage() {
 
 function reservationStatusLabel(status: ReservationStatus) {
   return { PENDING: "Pendiente", APPROVED: "Aprobada", REJECTED: "Rechazada", COMPLETED: "Entregada", CANCELLED: "Cancelada" }[status]
+}
+
+function reservationQuantityLabel(reservation: Reservation) {
+  const amount = new Intl.NumberFormat("es-UY", { maximumFractionDigits: 2 }).format(reservation.quantity)
+  return reservation.product.category?.toLowerCase().includes("flor")
+    ? `${amount} g`
+    : `${amount} ${reservation.quantity === 1 ? "unidad" : "unidades"}`
 }
 
 function reservationStatusClass(status: ReservationStatus) {
