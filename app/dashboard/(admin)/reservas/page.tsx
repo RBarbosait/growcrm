@@ -100,6 +100,13 @@ export default function ReservationsPage() {
     setError("")
     setSelectedReservation(reservation)
     window.history.replaceState(null, "", `/dashboard/reservas?reserva=${encodeURIComponent(reservation.id)}`)
+    if (reservation.status === "PENDING" || reservation.status === "APPROVED") {
+      void updateReservation(reservation.id, "COMPLETED")
+    } else if (reservation.status === "COMPLETED") {
+      setError("Esta reserva ya figura como entregada.")
+    } else {
+      setError(`Esta reserva está ${reservationStatusLabel(reservation.status).toLowerCase()} y no se puede marcar como entregada.`)
+    }
   }, [reservations])
 
   async function updateReservation(reservationId: string, status: "APPROVED" | "REJECTED" | "COMPLETED") {

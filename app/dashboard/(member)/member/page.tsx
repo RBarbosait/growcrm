@@ -228,7 +228,7 @@ export default function MemberDashboardPage() {
   }
 
   async function createReservation(quantity: number) {
-    if (!selectedProduct || submittingReservation) return
+    if (!data || !selectedProduct || submittingReservation) return
     if (!normalizeWhatsAppPhone(data.user.phone || "")) {
       setProfileName(data.user.name || "")
       setProfilePhone(data.user.phone || "")
