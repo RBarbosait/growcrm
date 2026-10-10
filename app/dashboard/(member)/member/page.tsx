@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 import { BadgeCheck, Building2, Gift, LogOut, Package, Search, Sparkles, Tag, X, ShoppingBag, Pencil } from "lucide-react"
 import { WaitOverlay } from "@/components/ui/wait-overlay"
 import ReservationQR from "@/components/dashboard/reservation-qr"
+import { normalizeWhatsAppPhone } from "@/lib/phone"
 import { supabase } from "@/lib/supabase"
 
 const API_URL =
@@ -194,6 +195,11 @@ export default function MemberDashboardPage() {
 
   async function saveMemberProfile(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    const normalizedPhone = normalizeWhatsAppPhone(profilePhone)
+    if (!normalizedPhone) {
+      setProfileError("Ingresá un número válido. Podés usar tu número local de Uruguay o incluir el código de país, por ejemplo +598 99 123 456.")
+      return
+    }
     setSavingProfile(true)
     setProfileError("")
     try {
@@ -207,7 +213,7 @@ export default function MemberDashboardPage() {
           Authorization: `Bearer ${session.access_token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ name: profileName, phone: profilePhone }),
+        body: JSON.stringify({ name: profileName, phone: normalizedPhone }),
       })
       const result = await response.json().catch(() => ({}))
       if (!response.ok) throw new Error(result.error || "No se pudieron guardar tus datos.")
@@ -223,6 +229,14 @@ export default function MemberDashboardPage() {
 
   async function createReservation(quantity: number) {
     if (!selectedProduct || submittingReservation) return
+    if (!normalizeWhatsAppPhone(data.user.phone || "")) {
+      setProfileName(data.user.name || "")
+      setProfilePhone(data.user.phone || "")
+      setProfileError("Para recibir avisos sobre tu reserva, primero agregá un teléfono válido para WhatsApp.")
+      setProfileOpen(true)
+      setReservationNotice("Completá tu teléfono para continuar con la reserva.")
+      return
+    }
     setSubmittingReservation(true)
     setReservationNotice("")
     try {
@@ -542,7 +556,8 @@ export default function MemberDashboardPage() {
               <span className="mt-1 block text-xs font-normal text-zinc-400">Para cambiar el email, contactá al administrador del club.</span>
             </label>
             <label className="mt-4 block text-sm font-semibold text-zinc-700">Teléfono
-              <input type="tel" maxLength={40} value={profilePhone} onChange={(event) => setProfilePhone(event.target.value)} className="mt-2 h-12 w-full rounded-xl border border-zinc-200 px-4 font-normal outline-none focus:border-emerald-600 focus:ring-4 focus:ring-emerald-100" />
+              <input type="tel" autoComplete="tel" inputMode="tel" required maxLength={40} placeholder="099 123 456 o +598 99 123 456" value={profilePhone} onChange={(event) => setProfilePhone(event.target.value)} className="mt-2 h-12 w-full rounded-xl border border-zinc-200 px-4 font-normal outline-none focus:border-emerald-600 focus:ring-4 focus:ring-emerald-100" />
+              <span className="mt-1 block text-xs font-normal text-zinc-400">Lo usamos para avisarte por WhatsApp sobre tus reservas. Aceptamos números locales de Uruguay o con código de país.</span>
             </label>
             {profileError && <p role="alert" className="mt-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{profileError}</p>}
             <button type="submit" disabled={savingProfile} className="mt-6 w-full rounded-xl bg-[#006b55] px-5 py-3.5 text-sm font-bold text-white transition hover:bg-[#005742] disabled:opacity-60">{savingProfile ? "Guardando…" : "Guardar cambios"}</button>
