@@ -2,45 +2,27 @@
 
 import { useEffect, useRef, useState } from "react"
 import { X } from "lucide-react"
+import { BrowserQRCodeReader } from "@zxing/browser"
 
 type Props = { onScan: (value: string) => void; onClose: () => void }
-type Detector = { detect: (source: HTMLVideoElement) => Promise<Array<{ rawValue: string }>> }
-type DetectorConstructor = new (options?: { formats: string[] }) => Detector
-
 export default function ReservationQRScanner({ onScan, onClose }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const [manualValue, setManualValue] = useState("")
   const [error, setError] = useState("")
 
   useEffect(() => {
-    let stream: MediaStream | undefined
     let active = true
-    let timer: number | undefined
+    let stopScanning: (() => void) | undefined
 
     async function start() {
-      const DetectorAPI = (window as Window & { BarcodeDetector?: DetectorConstructor }).BarcodeDetector
-      if (!DetectorAPI) {
-        setError("Este navegador no admite escaneo de QR. Podés pegar o escribir el código de reserva abajo.")
-        return
-      }
       try {
-        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
-        if (!active || !videoRef.current) return
-        videoRef.current.srcObject = stream
-        await videoRef.current.play()
-        const detector = new DetectorAPI({ formats: ["qr_code"] })
-        const scan = async () => {
-          if (!active || !videoRef.current) return
-          try {
-            const codes = await detector.detect(videoRef.current)
-            if (codes[0]?.rawValue) {
-              onScan(codes[0].rawValue)
-              return
-            }
-          } catch { /* Camera frames can be temporarily unavailable. */ }
-          timer = window.setTimeout(scan, 250)
-        }
-        void scan()
+        if (!navigator.mediaDevices?.getUserMedia) throw new Error("camera-unavailable")
+        const reader = new BrowserQRCodeReader()
+        const controls = await reader.decodeFromVideoDevice(undefined, videoRef.current!, (result) => {
+          if (result && active) onScan(result.getText())
+        })
+        if (!active) controls.stop()
+        else stopScanning = () => controls.stop()
       } catch {
         setError("No se pudo acceder a la cámara. Revisá los permisos o ingresá el código manualmente.")
       }
@@ -49,8 +31,7 @@ export default function ReservationQRScanner({ onScan, onClose }: Props) {
     void start()
     return () => {
       active = false
-      if (timer !== undefined) window.clearTimeout(timer)
-      stream?.getTracks().forEach((track) => track.stop())
+      stopScanning?.()
     }
   }, [onScan])
 
