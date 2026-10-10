@@ -512,7 +512,7 @@ const [saving, setSaving] = useState(false)
   <DashboardNavItem
     icon={CalendarDays}
     label="Reservas"
-    disabled
+    onClick={() => (window.location.href = "/dashboard/reservas")}
   />
 
   <DashboardNavItem
@@ -673,7 +673,10 @@ const [saving, setSaving] = useState(false)
   <DashboardNavItem
     icon={CalendarDays}
     label="Reservas"
-    disabled
+    onClick={() => {
+      setMobileMenuOpen(false)
+      window.location.href = "/dashboard/reservas"
+    }}
   />
 
   <DashboardNavItem

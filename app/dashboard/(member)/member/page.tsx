@@ -5,6 +5,7 @@ import type { FormEvent } from "react"
 import { useRouter } from "next/navigation"
 import { BadgeCheck, Building2, Gift, LogOut, Package, Search, Sparkles, Tag, X, ShoppingBag, Pencil } from "lucide-react"
 import { WaitOverlay } from "@/components/ui/wait-overlay"
+import ReservationQR from "@/components/dashboard/reservation-qr"
 import { supabase } from "@/lib/supabase"
 
 const API_URL =
@@ -32,6 +33,14 @@ type ClubBenefit = {
   linkUrl: string | null
 }
 
+type MemberReservation = {
+  id: string
+  quantity: number
+  status: "PENDING" | "APPROVED" | "REJECTED" | "COMPLETED" | "CANCELLED"
+  createdAt: string
+  product: { id: string; name: string; category: string | null; imageUrl: string | null; salePrice: number | null }
+}
+
 type MemberDashboardData = {
   user: { name: string | null; email: string; phone: string | null }
   membership: { id: string; active: boolean }
@@ -43,6 +52,7 @@ type MemberDashboardData = {
   }
   products: ClubProduct[]
   benefits: ClubBenefit[]
+  reservations: MemberReservation[]
 }
 
 const loadingMessages = [
@@ -60,11 +70,15 @@ export default function MemberDashboardPage() {
   const [category, setCategory] = useState("Todas")
   const [selectedProduct, setSelectedProduct] = useState<ClubProduct | null>(null)
   const [reservationNotice, setReservationNotice] = useState("")
+  const [reservationConfirmation, setReservationConfirmation] = useState<MemberReservation | null>(null)
   const [profileOpen, setProfileOpen] = useState(false)
   const [profileName, setProfileName] = useState("")
   const [profilePhone, setProfilePhone] = useState("")
   const [profileError, setProfileError] = useState("")
   const [savingProfile, setSavingProfile] = useState(false)
+  const [submittingReservation, setSubmittingReservation] = useState(false)
+  const [reservationActionId, setReservationActionId] = useState<string | null>(null)
+  const [reservationActionError, setReservationActionError] = useState("")
 
   useEffect(() => {
     async function loadMemberDashboard() {
@@ -207,6 +221,67 @@ export default function MemberDashboardPage() {
     }
   }
 
+  async function createReservation(quantity: number) {
+    if (!selectedProduct || submittingReservation) return
+    setSubmittingReservation(true)
+    setReservationNotice("")
+    try {
+      const { data: authData, error: authError } = await supabase.auth.getSession()
+      const session = authData.session
+      if (authError || !session) throw new Error("Tu sesión venció. Volvé a ingresar.")
+
+      const response = await fetch(`${API_URL}/club/${activeClubId}/reservations`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ productId: selectedProduct.id, quantity }),
+      })
+      const result = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(result.error || "No se pudo enviar la reserva.")
+
+      const createdReservation = result.reservation as MemberReservation
+      setReservationConfirmation(createdReservation)
+      setData((current) => current ? {
+        ...current,
+        products: current.products.map((product) => product.id === selectedProduct.id ? { ...product, stock: result.stock } : product),
+        reservations: [createdReservation, ...current.reservations],
+      } : current)
+      setSelectedProduct((current) => current ? { ...current, stock: result.stock } : current)
+      setReservationNotice("¡Listo! Tu reserva quedó enviada al club.")
+    } catch (reservationError) {
+      setReservationNotice(reservationError instanceof Error ? reservationError.message : "No se pudo enviar la reserva.")
+    } finally {
+      setSubmittingReservation(false)
+    }
+  }
+
+  async function cancelReservation(reservationId: string) {
+    if (reservationActionId) return
+    setReservationActionId(reservationId)
+    setReservationActionError("")
+    try {
+      const { data: authData, error: authError } = await supabase.auth.getSession()
+      const session = authData.session
+      if (authError || !session) throw new Error("Tu sesión venció. Volvé a ingresar.")
+
+      const response = await fetch(`${API_URL}/club/${activeClubId}/reservations/${reservationId}/cancel`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      })
+      const result = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(result.error || "No se pudo cancelar la reserva.")
+
+      setData((current) => current ? {
+        ...current,
+        reservations: current.reservations.map((reservation) => reservation.id === reservationId ? { ...reservation, status: "CANCELLED" } : reservation),
+        products: current.products.map((product) => product.id === result.reservation.productId ? { ...product, stock: product.stock + result.reservation.quantity } : product),
+      } : current)
+    } catch (cancelError) {
+      setReservationActionError(cancelError instanceof Error ? cancelError.message : "No se pudo cancelar la reserva.")
+    } finally {
+      setReservationActionId(null)
+    }
+  }
+
   return (
     <main className="min-h-screen bg-[#f8f6f1] text-[#172c29]">
       <header className="sticky top-0 z-30 border-b border-emerald-950/5 bg-white/90 backdrop-blur-xl">
@@ -223,6 +298,7 @@ export default function MemberDashboardPage() {
 
           <nav className="hidden items-center gap-7 text-sm font-semibold text-zinc-500 md:flex">
             <a href="#catalogo" className="transition hover:text-[#007f63]">Catálogo</a>
+            <a href="#mis-reservas" className="transition hover:text-[#007f63]">Mis reservas</a>
             <a href="#beneficios" className="transition hover:text-[#007f63]">Beneficios</a>
             <a href="#membresia" className="transition hover:text-[#007f63]">Mi membresía</a>
           </nav>
@@ -373,6 +449,40 @@ export default function MemberDashboardPage() {
           )}
         </section>
 
+        <section id="mis-reservas" className="scroll-mt-24 pt-12">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-emerald-700">Seguimiento</p>
+              <h2 className="mt-1 text-3xl font-bold tracking-tight">Mis reservas</h2>
+              <p className="mt-2 text-sm text-zinc-500">Consultá el estado de tus solicitudes al club.</p>
+            </div>
+            <span className="rounded-full bg-white px-3 py-1.5 text-sm font-semibold text-zinc-600 shadow-sm">{data.reservations.length} {data.reservations.length === 1 ? "solicitud" : "solicitudes"}</span>
+          </div>
+          {reservationActionError && <p role="alert" className="mt-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{reservationActionError}</p>}
+          {data.reservations.length ? (
+            <div className="mt-5 grid gap-3">
+              {data.reservations.map((reservation) => (
+                <article key={reservation.id} className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-[#e9e3d8] bg-white p-4 shadow-sm sm:px-5">
+                  <div className="flex min-w-0 items-center gap-4">
+                    {reservation.product.imageUrl ? <img src={reservation.product.imageUrl} alt="" className="h-14 w-14 rounded-xl object-cover" /> : <span className="flex h-14 w-14 items-center justify-center rounded-xl bg-emerald-50 text-emerald-800"><Package className="h-6 w-6" /></span>}
+                    <div className="min-w-0">
+                      <p className="truncate font-bold text-[#213a34]">{reservation.product.name}</p>
+                      <p className="mt-1 text-sm text-zinc-500">{reservation.quantity} {reservation.quantity === 1 ? "unidad" : "unidades"} · {new Date(reservation.createdAt).toLocaleDateString("es-UY")}</p>
+                    </div>
+                  </div>
+                  <ReservationQR reservationId={reservation.id} size={112} />
+                  <div className="flex items-center gap-3">
+                    <span className={`rounded-full px-3 py-1.5 text-xs font-bold ${reservationStatusClass(reservation.status)}`}>{reservationStatusLabel(reservation.status)}</span>
+                    {reservation.status === "PENDING" && <button type="button" disabled={reservationActionId === reservation.id} onClick={() => void cancelReservation(reservation.id)} className="text-sm font-semibold text-zinc-500 underline-offset-4 hover:text-red-700 hover:underline disabled:opacity-50">{reservationActionId === reservation.id ? "Cancelando…" : "Cancelar"}</button>}
+                  </div>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <div className="mt-5 rounded-3xl border border-dashed border-emerald-200 bg-white px-6 py-10 text-center text-sm text-zinc-500">Todavía no enviaste reservas. Cuando hagas una, vas a poder seguirla desde acá.</div>
+          )}
+        </section>
+
         <section id="beneficios" className="scroll-mt-24 pt-14">
           <div className="overflow-hidden rounded-[30px] bg-[#eeeae1] p-7 sm:p-10">
             <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
@@ -444,8 +554,10 @@ export default function MemberDashboardPage() {
         <MemberProductModal
           product={selectedProduct}
           notice={reservationNotice}
-          onReserve={() => setReservationNotice("Las compras y reservas estarán disponibles próximamente.")}
-          onClose={() => { setSelectedProduct(null); setReservationNotice("") }}
+          submitting={submittingReservation}
+          confirmation={reservationConfirmation}
+          onReserve={createReservation}
+          onClose={() => { setSelectedProduct(null); setReservationNotice(""); setReservationConfirmation(null) }}
         />
       )}
     </main>
@@ -455,14 +567,19 @@ export default function MemberDashboardPage() {
 function MemberProductModal({
   product,
   notice,
+  submitting,
+  confirmation,
   onReserve,
   onClose,
 }: {
   product: ClubProduct
   notice: string
-  onReserve: () => void
+  submitting: boolean
+  confirmation: MemberReservation | null
+  onReserve: (quantity: number) => void
   onClose: () => void
 }) {
+  const [quantity, setQuantity] = useState(1)
   const stock = Math.max(0, product.stock || 0)
   const threshold = Math.max(1, product.minStock || 5)
   const stockPercent = stock === 0 ? 0 : stock < threshold ? 28 : stock < threshold * 2 ? 62 : 100
@@ -516,6 +633,18 @@ function MemberProductModal({
               </div>
             </div>
 
+            <div className="mt-5 flex items-center justify-between rounded-2xl border border-zinc-100 px-5 py-4">
+              <div>
+                <p className="text-sm font-bold text-[#092f35]">Cantidad</p>
+                <p className="mt-1 text-xs text-zinc-500">Stock disponible: {stock}</p>
+              </div>
+              <div className="flex items-center gap-3">
+                <button type="button" aria-label="Restar una unidad" disabled={quantity <= 1} onClick={() => setQuantity((current) => Math.max(1, current - 1))} className="flex h-9 w-9 items-center justify-center rounded-full border border-zinc-200 text-lg font-semibold disabled:opacity-40">−</button>
+                <span className="w-6 text-center font-bold">{quantity}</span>
+                <button type="button" aria-label="Sumar una unidad" disabled={quantity >= stock} onClick={() => setQuantity((current) => Math.min(stock, current + 1))} className="flex h-9 w-9 items-center justify-center rounded-full border border-zinc-200 text-lg font-semibold disabled:opacity-40">+</button>
+              </div>
+            </div>
+
             {isFlower && product.attributes && (
               <div className="mt-8 rounded-[26px] bg-[#f5faf8] p-5 sm:p-7">
                 <div>
@@ -531,12 +660,12 @@ function MemberProductModal({
         </div>
 
         <div className="shrink-0 border-t border-zinc-100 bg-white px-6 py-4 sm:px-8">
-          {notice && <p role="status" className="mb-3 rounded-xl bg-emerald-50 px-4 py-2.5 text-center text-sm font-medium text-emerald-800">{notice}</p>}
-          <button type="button" onClick={onReserve} disabled={stock === 0} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#006b55] px-5 py-3.5 text-sm font-bold text-white shadow-lg shadow-emerald-900/10 transition hover:bg-[#005742] disabled:cursor-not-allowed disabled:bg-zinc-300 disabled:shadow-none">
+          {notice && <div role="status" className="mb-3 rounded-xl bg-emerald-50 px-4 py-3 text-center text-sm font-medium text-emerald-800"><p>{notice}</p>{confirmation && <div className="mt-3 flex flex-col items-center gap-2"><ReservationQR reservationId={confirmation.id} size={144} /><span className="text-xs text-emerald-900">Presentá este código al club</span></div>}</div>}
+          <button type="button" onClick={() => onReserve(quantity)} disabled={stock === 0 || submitting} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#006b55] px-5 py-3.5 text-sm font-bold text-white shadow-lg shadow-emerald-900/10 transition hover:bg-[#005742] disabled:cursor-not-allowed disabled:bg-zinc-300 disabled:shadow-none">
             <ShoppingBag className="h-4 w-4" />
-            Realizar compra / reserva
+            {submitting ? "Enviando solicitud…" : "Solicitar reserva"}
           </button>
-          <p className="mt-2 text-center text-xs text-zinc-400">La solicitud de compra o reserva estará disponible próximamente.</p>
+          <p className="mt-2 text-center text-xs text-zinc-400">El club confirmará tu solicitud. El pago se coordina directamente con el club.</p>
         </div>
       </section>
     </div>
@@ -592,4 +721,20 @@ function formatPrice(value: number) {
     currency: "UYU",
     maximumFractionDigits: 0,
   }).format(value)
+}
+
+function reservationStatusLabel(status: MemberReservation["status"]) {
+  return {
+    PENDING: "Pendiente",
+    APPROVED: "Aprobada",
+    REJECTED: "Rechazada",
+    COMPLETED: "Entregada",
+    CANCELLED: "Cancelada",
+  }[status]
+}
+
+function reservationStatusClass(status: MemberReservation["status"]) {
+  if (status === "APPROVED" || status === "COMPLETED") return "bg-emerald-50 text-emerald-800"
+  if (status === "REJECTED" || status === "CANCELLED") return "bg-zinc-100 text-zinc-600"
+  return "bg-amber-50 text-amber-800"
 }
