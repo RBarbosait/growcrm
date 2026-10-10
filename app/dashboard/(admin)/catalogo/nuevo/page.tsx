@@ -42,6 +42,17 @@ type Attribute = {
 
 type FormValues = Record<string, string | number | number[]>
 
+function isProductImageAttribute(attribute: Attribute) {
+  const normalize = (value: string) => value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase()
+  return attribute.type === "image" ||
+    ["imagen", "image"].includes(normalize(attribute.slug)) ||
+    ["imagen", "image"].includes(normalize(attribute.name))
+}
+
 export default function NuevoProductoPage() {
   const router = useRouter()
 
@@ -140,7 +151,7 @@ export default function NuevoProductoPage() {
   ) {
     const value = formValues[attribute.slug]
 
-    if (attribute.type === "image") {
+    if (isProductImageAttribute(attribute)) {
       return !productImageUrl
     }
 
@@ -444,7 +455,7 @@ export default function NuevoProductoPage() {
 
     {selectedCategory.attributes
       .slice()
-      .filter((attribute) => attribute.type !== "image")
+      .filter((attribute) => !isProductImageAttribute(attribute))
       .sort(
         (a, b) =>
           a.sortOrder -

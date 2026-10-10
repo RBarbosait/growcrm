@@ -52,6 +52,17 @@ type Club = {
   name: string
 }
 
+function isProductImageAttribute(attribute: Attribute) {
+  const normalize = (value: string) => value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase()
+  return attribute.type === "image" ||
+    ["imagen", "image"].includes(normalize(attribute.slug)) ||
+    ["imagen", "image"].includes(normalize(attribute.name))
+}
+
 export default function CatalogoPage() {
   const [products, setProducts] = useState<Product[]>([])
   const [club, setClub] = useState<Club | null>(null)
@@ -1035,7 +1046,7 @@ function EditProductModal({
 
     {attributes
       .slice()
-      .filter((attribute) => attribute.type !== "image")
+      .filter((attribute) => !isProductImageAttribute(attribute))
       .sort(
         (a, b) =>
           a.sortOrder - b.sortOrder

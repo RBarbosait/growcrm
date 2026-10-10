@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { Camera, ImagePlus, LoaderCircle, Link2 } from "lucide-react"
+import { Camera, ImagePlus, LoaderCircle } from "lucide-react"
 
 const CLOUD_NAME = "dvlfzrpeq"
 const UPLOAD_PRESET = "casadata"
@@ -138,10 +138,6 @@ export default function ProductImageField({
 
       <input ref={galleryInput} type="file" accept="image/*" className="hidden" onChange={(event) => { void upload(event.target.files?.[0]); event.currentTarget.value = "" }} />
 
-      <label className="block">
-        <span className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-zinc-500"><Link2 className="h-3.5 w-3.5" />O pegá una URL de imagen</span>
-        <input type="url" value={value} onChange={(event) => onChange(event.target.value)} placeholder="https://..." className="h-10 w-full rounded-xl border border-zinc-200 px-3 text-sm outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100" />
-      </label>
       {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
       <p className="text-xs text-zinc-400">Formatos de imagen, hasta 10 MB. En el celular podés elegir una foto o usar la cámara.</p>
 
