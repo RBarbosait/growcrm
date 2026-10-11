@@ -506,7 +506,7 @@ const [saving, setSaving] = useState(false)
   <DashboardNavItem
     icon={Package}
     label="Stock"
-    disabled
+    onClick={() => (window.location.href = "/dashboard/stock")}
   />
 
   <DashboardNavItem
@@ -518,7 +518,7 @@ const [saving, setSaving] = useState(false)
   <DashboardNavItem
     icon={ShoppingCart}
     label="Ventas"
-    disabled
+    onClick={() => (window.location.href = "/dashboard/ventas")}
   />
 
   <DashboardNavItem
@@ -667,7 +667,10 @@ const [saving, setSaving] = useState(false)
   <DashboardNavItem
     icon={Package}
     label="Stock"
-    disabled
+    onClick={() => {
+      setMobileMenuOpen(false)
+      window.location.href = "/dashboard/stock"
+    }}
   />
 
   <DashboardNavItem
@@ -682,7 +685,10 @@ const [saving, setSaving] = useState(false)
   <DashboardNavItem
     icon={ShoppingCart}
     label="Ventas"
-    disabled
+    onClick={() => {
+      setMobileMenuOpen(false)
+      window.location.href = "/dashboard/ventas"
+    }}
   />
 
   <DashboardNavItem
