@@ -18,6 +18,13 @@ const loginMessages = [
   "Ya casi estás dentro...",
 ]
 
+function getReservationReturnPath() {
+  const next = new URLSearchParams(window.location.search).get("next")
+  return (next?.startsWith("/qr-reserva?") || next?.startsWith("/dashboard/reservas?")) && !next.startsWith("//")
+    ? next
+    : null
+}
+
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
@@ -41,7 +48,7 @@ const handleLogin = async (e: React.FormEvent) => {
       return
     }
 
-    router.push("/dashboard")
+    router.push(getReservationReturnPath() || "/dashboard")
   } catch (error) {
     console.error("LOGIN ERROR:", error)
     alert("No se pudo iniciar sesión. Intentá nuevamente.")
@@ -54,13 +61,17 @@ const handleLogin = async (e: React.FormEvent) => {
 const handleGoogleLogin = async () => {
   setIsLoading(true)
   try {
+  const reservationReturnPath = getReservationReturnPath()
+  const dashboardReturn = reservationReturnPath
+    ? `/dashboard?next=${encodeURIComponent(reservationReturnPath)}`
+    : "/dashboard"
   console.log("URL", process.env.NEXT_PUBLIC_SUPABASE_URL)
   console.log("ORIGIN", window.location.origin)
 
 const result = await supabase.auth.signInWithOAuth({
   provider: "google",
   options: {
-    redirectTo: `${window.location.origin}/dashboard`,
+    redirectTo: `${window.location.origin}${dashboardReturn}`,
     skipBrowserRedirect: true,
   },
 })

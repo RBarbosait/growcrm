@@ -37,6 +37,16 @@ export default function DashboardEntryPage() {
           return
         }
 
+        const qrReturnPath = new URLSearchParams(window.location.search).get("next")
+        if (
+          qrReturnPath &&
+          (qrReturnPath.startsWith("/qr-reserva?") || qrReturnPath.startsWith("/dashboard/reservas?")) &&
+          !qrReturnPath.startsWith("//")
+        ) {
+          router.replace(qrReturnPath)
+          return
+        }
+
         const name =
           session.user.user_metadata?.full_name ||
           session.user.user_metadata?.name ||

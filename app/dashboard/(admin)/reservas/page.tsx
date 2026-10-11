@@ -6,6 +6,7 @@ import { ArrowLeft, CalendarDays, Check, Clock3, Package, ScanLine, X } from "lu
 import { WaitOverlay } from "@/components/ui/wait-overlay"
 import ReservationQRScanner from "@/components/dashboard/reservation-qr-scanner"
 import { normalizeWhatsAppPhone } from "@/lib/phone"
+import { getReservationQrImageUrl } from "@/lib/reservation-qr"
 import { supabase } from "@/lib/supabase"
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://growcrm-api-production.up.railway.app"
@@ -55,13 +56,45 @@ export default function ReservationsPage() {
     const { data: authData, error: authError } = await supabase.auth.getSession()
     const session = authData.session
     if (authError || !session) {
-      window.location.href = "/auth/login"
+      const currentPath = `${window.location.pathname}${window.location.search}`
+      window.location.href = `/auth/login?next=${encodeURIComponent(currentPath)}`
       throw new Error("Tu sesión venció. Volvé a ingresar.")
     }
-    const clubId = localStorage.getItem("growcrm_active_club_id")
+
+    const name = session.user.user_metadata?.full_name || session.user.user_metadata?.name || session.user.email?.split("@")[0]
+    const syncResponse = await fetch(`${API_URL}/user/sync`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: session.user.email, name }),
+    })
+    const syncResult = await syncResponse.json().catch(() => ({}))
+    if (!syncResponse.ok) throw new Error(syncResult.error || "No se pudo verificar tu acceso al club.")
+
+    const clubs: { id: string; role?: string }[] = Array.isArray(syncResult.clubs) ? syncResult.clubs : []
+    const storedClubId = localStorage.getItem("growcrm_active_club_id")
+    const selectedClub = clubs.find((club) => club.id === storedClubId) || (clubs.length === 1 ? clubs[0] : null)
+    const hasMemberAccess = clubs.some((club) => club.role === "MEMBER")
+
+    if (selectedClub?.role === "MEMBER" || hasMemberAccess) {
+      const memberClub = selectedClub?.role === "MEMBER" ? selectedClub : clubs.find((club) => club.role === "MEMBER")!
+      localStorage.setItem("growcrm_active_club_id", memberClub.id)
+      window.location.replace("/dashboard/member")
+      throw new Error("Abriendo el espacio de socio.")
+    }
+
+    const requestedReservationId = new URLSearchParams(window.location.search).get("reserva")
+    const wasResolvedFromQr = new URLSearchParams(window.location.search).get("qrResolved") === "1"
+    if (requestedReservationId && !wasResolvedFromQr) {
+      window.location.replace(`/qr-reserva?reserva=${encodeURIComponent(requestedReservationId)}`)
+      throw new Error("Buscando el club de esta reserva.")
+    }
+
+    if (selectedClub) localStorage.setItem("growcrm_active_club_id", selectedClub.id)
+    const clubId = selectedClub?.id || null
     if (!clubId) {
-      window.location.href = "/dashboard"
-      throw new Error("No hay un club seleccionado.")
+      const requestedId = new URLSearchParams(window.location.search).get("reserva")
+      window.location.replace(requestedId ? `/qr-reserva?reserva=${encodeURIComponent(requestedId)}` : "/dashboard")
+      throw new Error("Buscando el club de esta reserva.")
     }
     return { session, clubId }
   }
@@ -153,7 +186,8 @@ export default function ReservationsPage() {
       if (status === "COMPLETED") setSuccessNotice("Reserva marcada como entregada y guardada.")
       if (status === "APPROVED" && currentReservation) {
         const name = result.user?.name || currentReservation.user.name || ""
-        const message = `Hola${name ? ` ${name}` : ""}, tu pedido de ${result.product.name} (${reservationQuantityLabel(result)}) fue aprobado y ya podés retirarlo por el club. Presentá el QR de tu reserva al retirarlo.`
+        const qrImageUrl = getReservationQrImageUrl(window.location.origin, result.id, 400)
+        const message = `Hola${name ? ` ${name}` : ""}, tu pedido de ${result.product.name} (${reservationQuantityLabel(result)}) fue aprobado y ya podés retirarlo por el club. Presentá este QR al retirarlo: ${qrImageUrl}`
         const rawPhone = result.user?.phone || currentReservation.user.phone || ""
         const phone = normalizeWhatsAppPhone(rawPhone) || ""
         const fallback = (note: string) => {
