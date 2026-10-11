@@ -10,8 +10,33 @@ import { getReservationQrImageUrl } from "@/lib/reservation-qr"
 import { supabase } from "@/lib/supabase"
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://growcrm-api-production.up.railway.app"
+const REQUEST_TIMEOUT_MS = 15_000
+
+function withTimeout<T>(promise: Promise<T>, milliseconds: number, message: string): Promise<T> {
+  let timeoutId: number | undefined
+  const timeout = new Promise<T>((_, reject) => {
+    timeoutId = window.setTimeout(() => reject(new Error(message)), milliseconds)
+  })
+  return Promise.race([promise, timeout]).finally(() => {
+    if (timeoutId !== undefined) window.clearTimeout(timeoutId)
+  })
+}
+
+async function fetchWithTimeout(input: RequestInfo | URL, init: RequestInit = {}) {
+  const controller = new AbortController()
+  const timeout = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
+  try {
+    return await fetch(input, { ...init, signal: controller.signal })
+  } catch (error) {
+    if (controller.signal.aborted) throw new Error("El servidor está tardando demasiado. Revisá tu conexión y reintentá.")
+    throw error
+  } finally {
+    window.clearTimeout(timeout)
+  }
+}
 
 type ReservationStatus = "PENDING" | "APPROVED" | "REJECTED" | "COMPLETED" | "CANCELLED"
+type ReservationAuthContext = { session: { access_token: string }; clubId: string }
 
 type Reservation = {
   id: string
@@ -53,7 +78,11 @@ export default function ReservationsPage() {
   }, [])
 
   async function getAuthContext() {
-    const { data: authData, error: authError } = await supabase.auth.getSession()
+    const { data: authData, error: authError } = await withTimeout(
+      supabase.auth.getSession(),
+      8_000,
+      "Safari no pudo recuperar tu sesión. Volvé a intentar o iniciá sesión nuevamente."
+    )
     const session = authData.session
     if (authError || !session) {
       const currentPath = `${window.location.pathname}${window.location.search}`
@@ -62,7 +91,7 @@ export default function ReservationsPage() {
     }
 
     const name = session.user.user_metadata?.full_name || session.user.user_metadata?.name || session.user.email?.split("@")[0]
-    const syncResponse = await fetch(`${API_URL}/user/sync`, {
+    const syncResponse = await fetchWithTimeout(`${API_URL}/user/sync`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email: session.user.email, name }),
@@ -104,7 +133,7 @@ export default function ReservationsPage() {
     setError("")
     try {
       const { session, clubId } = await getAuthContext()
-      const response = await fetch(`${API_URL}/club/${clubId}/reservations`, {
+      const response = await fetchWithTimeout(`${API_URL}/club/${clubId}/reservations`, {
         headers: { Authorization: `Bearer ${session.access_token}` },
       })
       const result = await response.json().catch(() => [])
@@ -114,8 +143,15 @@ export default function ReservationsPage() {
       const requestedId = new URLSearchParams(window.location.search).get("reserva")
       if (requestedId) {
         const requested = items.find((reservation) => reservation.id === requestedId)
-        if (requested) setSelectedReservation(requested)
-        else setError("No encontramos esa reserva en este club.")
+        if (requested) {
+          setSelectedReservation(requested)
+          const fromExternalQr = new URLSearchParams(window.location.search).get("qrResolved") === "1"
+          if (fromExternalQr && (requested.status === "PENDING" || requested.status === "APPROVED")) {
+            void updateReservation(requested.id, "COMPLETED", { session, clubId })
+          } else if (fromExternalQr && requested.status === "COMPLETED") {
+            setSuccessNotice("Esta reserva ya estaba marcada como entregada.")
+          }
+        } else setError("No encontramos esa reserva en este club.")
       }
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : "No se pudieron cargar las reservas.")
@@ -149,7 +185,7 @@ export default function ReservationsPage() {
     }
   }, [reservations])
 
-  async function updateReservation(reservationId: string, status: "APPROVED" | "REJECTED" | "COMPLETED") {
+  async function updateReservation(reservationId: string, status: "APPROVED" | "REJECTED" | "COMPLETED", authContext?: ReservationAuthContext) {
     if (processingId) return
     const currentReservation = reservations.find((item) => item.id === reservationId) || selectedReservation
     let whatsAppWindow: Window | null = null
@@ -173,15 +209,17 @@ export default function ReservationsPage() {
     setWhatsAppFollowUp(null)
     setMessageCopied(false)
     try {
-      const { session, clubId } = await getAuthContext()
-      const response = await fetch(`${API_URL}/club/${clubId}/reservations/${reservationId}`, {
+      const { session, clubId } = authContext || await getAuthContext()
+      const response = await fetchWithTimeout(`${API_URL}/club/${clubId}/reservations/${reservationId}`, {
         method: "PATCH",
         headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" },
         body: JSON.stringify({ status }),
       })
       const result = await response.json().catch(() => ({}))
       if (!response.ok) throw new Error(result.error || "No se pudo actualizar la reserva.")
-      setReservations((current) => current.map((reservation) => reservation.id === reservationId ? result : reservation))
+      setReservations((current) => current.some((reservation) => reservation.id === reservationId)
+        ? current.map((reservation) => reservation.id === reservationId ? result : reservation)
+        : [result, ...current])
       setSelectedReservation((current) => current?.id === reservationId ? result : current)
       if (status === "COMPLETED") setSuccessNotice("Reserva marcada como entregada y guardada.")
       if (status === "APPROVED" && currentReservation) {

@@ -9,6 +9,33 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://growcrm-api-producti
 
 type Club = { id: string; role?: string }
 type Reservation = { id: string }
+const QR_REQUEST_TIMEOUT_MS = 15_000
+const SESSION_TIMEOUT_MS = 8_000
+
+function withTimeout<T>(promise: Promise<T>, milliseconds: number, message: string): Promise<T> {
+  let timeoutId: number | undefined
+  const timeout = new Promise<T>((_, reject) => {
+    timeoutId = window.setTimeout(() => reject(new Error(message)), milliseconds)
+  })
+  return Promise.race([promise, timeout]).finally(() => {
+    if (timeoutId !== undefined) window.clearTimeout(timeoutId)
+  })
+}
+
+async function fetchWithTimeout(input: RequestInfo | URL, init: RequestInit = {}) {
+  const controller = new AbortController()
+  const timeout = window.setTimeout(() => controller.abort(), QR_REQUEST_TIMEOUT_MS)
+  try {
+    return await fetch(input, { ...init, signal: controller.signal })
+  } catch (error) {
+    if (controller.signal.aborted) {
+      throw new Error("La API del club está tardando demasiado en responder. Revisá tu conexión y volvé a intentar.")
+    }
+    throw error
+  } finally {
+    window.clearTimeout(timeout)
+  }
+}
 
 export default function ReservationQrEntryPage() {
   const [message, setMessage] = useState("")
@@ -24,7 +51,11 @@ export default function ReservationQrEntryPage() {
       }
 
       try {
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+        const { data: { session }, error: sessionError } = await withTimeout(
+          supabase.auth.getSession(),
+          SESSION_TIMEOUT_MS,
+          "Safari no pudo recuperar tu sesión. Volvé a intentar o iniciá sesión nuevamente."
+        )
         if (sessionError) throw sessionError
         if (!session?.user?.email) {
           const next = `/qr-reserva?reserva=${encodeURIComponent(reservationId)}`
@@ -33,7 +64,7 @@ export default function ReservationQrEntryPage() {
         }
 
         const name = session.user.user_metadata?.full_name || session.user.user_metadata?.name || session.user.email.split("@")[0]
-        const syncResponse = await fetch(`${API_URL}/user/sync`, {
+        const syncResponse = await fetchWithTimeout(`${API_URL}/user/sync`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email: session.user.email, name }),
@@ -65,21 +96,43 @@ export default function ReservationQrEntryPage() {
           return
         }
 
-        const reservationLists = await Promise.all(adminClubs.map(async (club) => {
+        // Si el administrador ya tiene un club seleccionado (o solo administra uno),
+        // no hace falta pedir las reservas de todos los clubes antes de abrir el QR.
+        const knownAdminClub = storedClub?.role !== "MEMBER"
+          ? storedClub
+          : adminClubs.length === 1
+            ? adminClubs[0]
+            : null
+        if (knownAdminClub) {
+          localStorage.setItem("growcrm_active_club_id", knownAdminClub.id)
+          window.location.replace(`/dashboard/reservas?reserva=${encodeURIComponent(reservationId)}&qrResolved=1`)
+          return
+        }
+
+        const clubsToSearch = storedClub?.role !== "MEMBER"
+          ? [storedClub, ...adminClubs.filter((club) => club.id !== storedClub?.id)].filter((club): club is Club => Boolean(club))
+          : adminClubs
+        const reservationLists = await Promise.all(clubsToSearch.map(async (club) => {
           try {
-            const response = await fetch(`${API_URL}/club/${club.id}/reservations`, {
+            const response = await fetchWithTimeout(`${API_URL}/club/${club.id}/reservations`, {
               headers: { Authorization: `Bearer ${session.access_token}` },
             })
-            if (!response.ok) return { club, reservations: [] as Reservation[] }
+            if (!response.ok) return { club, reservations: [] as Reservation[], failed: true }
             const rows = await response.json().catch(() => [])
-            return { club, reservations: Array.isArray(rows) ? rows as Reservation[] : [] }
-          } catch {
-            return { club, reservations: [] as Reservation[] }
+            return { club, reservations: Array.isArray(rows) ? rows as Reservation[] : [], failed: false }
+          } catch (requestError) {
+            return { club, reservations: [] as Reservation[], failed: true, error: requestError }
           }
         }))
         if (!active) return
 
         const matchingClub = reservationLists.find(({ reservations }) => reservations.some((reservation) => reservation.id === reservationId))?.club
+        if (!matchingClub && reservationLists.every(({ failed }) => failed)) {
+          const timedOut = reservationLists.find(({ error }) => error instanceof Error)?.error
+          throw timedOut instanceof Error
+            ? timedOut
+            : new Error("No se pudieron consultar las reservas del club. Revisá tu conexión y volvé a intentar.")
+        }
         const targetClub = matchingClub || (storedClub?.role !== "MEMBER" ? storedClub : null) || adminClubs[0]
         localStorage.setItem("growcrm_active_club_id", targetClub.id)
         window.location.replace(`/dashboard/reservas?reserva=${encodeURIComponent(reservationId)}&qrResolved=1`)
@@ -94,7 +147,7 @@ export default function ReservationQrEntryPage() {
   }, [])
 
   if (message) {
-    return <main className="flex min-h-screen items-center justify-center bg-[#f5faf8] px-5"><section className="w-full max-w-md rounded-3xl bg-white p-7 text-center shadow-lg"><h1 className="text-xl font-bold text-[#092f35]">No se pudo abrir la reserva</h1><p className="mt-2 text-sm text-zinc-600">{message}</p><Link href="/dashboard" className="mt-5 inline-flex rounded-xl bg-emerald-800 px-5 py-3 text-sm font-semibold text-white">Ingresar a GrowCRM</Link></section></main>
+    return <main className="flex min-h-screen items-center justify-center bg-[#f5faf8] px-5"><section className="w-full max-w-md rounded-3xl bg-white p-7 text-center shadow-lg"><h1 className="text-xl font-bold text-[#092f35]">No se pudo abrir la reserva</h1><p className="mt-2 text-sm text-zinc-600">{message}</p><div className="mt-5 flex flex-wrap justify-center gap-3"><button type="button" onClick={() => window.location.reload()} className="inline-flex rounded-xl bg-emerald-800 px-5 py-3 text-sm font-semibold text-white">Reintentar</button><Link href="/dashboard" className="inline-flex rounded-xl border border-zinc-200 px-5 py-3 text-sm font-semibold text-zinc-700">Ingresar a GrowCRM</Link></div></section></main>
   }
 
   return <main className="min-h-screen bg-[#f5faf8]"><WaitOverlay open label="Abriendo el QR de la reserva" messages={["Verificando tu sesión y tu rol…", "Buscando la reserva en tu club…"]} /></main>
