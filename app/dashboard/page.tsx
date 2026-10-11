@@ -16,6 +16,13 @@ type Club = {
   role?: string
 }
 
+function getReservationReturnPath() {
+  const next = new URLSearchParams(window.location.search).get("next")
+  return (next?.startsWith("/qr-reserva?") || next?.startsWith("/dashboard/reservas?")) && !next.startsWith("//")
+    ? next
+    : null
+}
+
 export default function DashboardEntryPage() {
   const router = useRouter()
   const [clubs, setClubs] = useState<Club[]>([])
@@ -37,15 +44,7 @@ export default function DashboardEntryPage() {
           return
         }
 
-        const qrReturnPath = new URLSearchParams(window.location.search).get("next")
-        if (
-          qrReturnPath &&
-          (qrReturnPath.startsWith("/qr-reserva?") || qrReturnPath.startsWith("/dashboard/reservas?")) &&
-          !qrReturnPath.startsWith("//")
-        ) {
-          router.replace(qrReturnPath)
-          return
-        }
+        const qrReturnPath = getReservationReturnPath()
 
         const name =
           session.user.user_metadata?.full_name ||
@@ -73,11 +72,19 @@ export default function DashboardEntryPage() {
         }
 
         const storedClubId = localStorage.getItem("growcrm_active_club_id")
+        const hasMemberRole = userClubs.some((club) => club.role === "MEMBER")
+        const hasAdminRole = userClubs.some((club) => club.role !== "MEMBER")
+        const hasMultipleRoles = hasMemberRole && hasAdminRole
         const selectedClub =
           userClubs.find((club) => club.id === storedClubId) ||
           (userClubs.length === 1 ? userClubs[0] : null)
 
-        if (selectedClub) {
+        if (selectedClub && !hasMultipleRoles) {
+          if (qrReturnPath && selectedClub.role !== "MEMBER") {
+            localStorage.setItem("growcrm_active_club_id", selectedClub.id)
+            router.replace(qrReturnPath)
+            return
+          }
           openClub(selectedClub)
           return
         }
@@ -154,7 +161,11 @@ export default function DashboardEntryPage() {
         </div>
         <p className="mt-5 text-center text-sm font-semibold text-emerald-700">Tu espacio GrowCRM</p>
         <h1 className="mt-2 text-center text-3xl font-bold tracking-tight text-[#092f35]">¿A qué club querés entrar?</h1>
-        <p className="mt-3 text-center text-sm text-zinc-500">Elegí el club y el espacio que querés abrir.</p>
+            <p className="mt-3 text-center text-sm text-zinc-500">
+              {clubs.some((club) => club.role === "MEMBER") && clubs.some((club) => club.role !== "MEMBER")
+                ? "Tu cuenta tiene acceso como socio y administrador. Elegí cómo querés entrar."
+                : "Elegí el club al que querés entrar."}
+            </p>
         <div className="mt-8 grid gap-3">
           {clubs.map((club) => (
             <button
@@ -162,11 +173,8 @@ export default function DashboardEntryPage() {
               type="button"
               onClick={() => {
                 localStorage.setItem("growcrm_active_club_id", club.id)
-                router.replace(
-                  club.role === "MEMBER"
-                    ? "/dashboard/member"
-                    : "/dashboard/admin"
-                )
+                const returnPath = getReservationReturnPath()
+                router.replace(club.role === "MEMBER" ? "/dashboard/member" : returnPath || "/dashboard/admin")
               }}
               className="flex items-center justify-between rounded-2xl border border-zinc-200 p-5 text-left transition hover:border-emerald-300 hover:bg-emerald-50/50"
             >

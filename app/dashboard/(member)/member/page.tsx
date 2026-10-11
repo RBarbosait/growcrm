@@ -65,6 +65,7 @@ const loadingMessages = [
 export default function MemberDashboardPage() {
   const router = useRouter()
   const [data, setData] = useState<MemberDashboardData | null>(null)
+  const [hasAdminAccess, setHasAdminAccess] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [search, setSearch] = useState("")
@@ -97,6 +98,20 @@ export default function MemberDashboardPage() {
           router.replace("/dashboard")
           return
         }
+
+        void fetch(`${API_URL}/user/sync`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: session.user.email,
+            name: session.user.user_metadata?.full_name || session.user.user_metadata?.name || session.user.email?.split("@")[0],
+          }),
+        }).then(async (syncResponse) => {
+          if (!syncResponse.ok) return
+          const syncResult = await syncResponse.json().catch(() => ({}))
+          const clubs: { role?: string }[] = Array.isArray(syncResult.clubs) ? syncResult.clubs : []
+          setHasAdminAccess(clubs.some((club) => club.role !== "MEMBER") && clubs.some((club) => club.role === "MEMBER"))
+        }).catch((syncError) => console.error("MEMBER ROLE SWITCH ERROR:", syncError))
 
         const response = await fetch(
           `${API_URL}/club/${clubId}/member-dashboard`,
@@ -318,6 +333,7 @@ export default function MemberDashboardPage() {
           </nav>
 
           <div className="flex items-center gap-3">
+            {hasAdminAccess && <button type="button" onClick={() => router.replace("/dashboard")} className="rounded-xl border border-emerald-900/15 px-3 py-2 text-xs font-semibold text-[#174f43] transition hover:bg-emerald-50 sm:px-4 sm:text-sm">Cambiar espacio</button>}
             <div className="hidden text-right sm:block">
               <p className="text-sm font-semibold">{data.user.name || data.user.email}</p>
               <p className="text-xs text-zinc-400">Socio activo</p>

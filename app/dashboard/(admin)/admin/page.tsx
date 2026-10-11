@@ -617,6 +617,20 @@ const [saving, setSaving] = useState(false)
             {activeClub?.name || "Sin club"}
           </p>
 
+          {clubs.some((club) => club.role === "MEMBER") && clubs.some((club) => club.role !== "MEMBER") && (
+            <button
+              type="button"
+              onClick={() => {
+                localStorage.removeItem("growcrm_active_club_id")
+                setMobileMenuOpen(false)
+                window.location.href = "/dashboard"
+              }}
+              className="mt-3 text-xs font-semibold text-emerald-800 hover:underline"
+            >
+              Cambiar espacio
+            </button>
+          )}
+
         </div>
 
       </div>

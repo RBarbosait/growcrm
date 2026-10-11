@@ -102,13 +102,17 @@ export default function ReservationsPage() {
     const clubs: { id: string; role?: string }[] = Array.isArray(syncResult.clubs) ? syncResult.clubs : []
     const storedClubId = localStorage.getItem("growcrm_active_club_id")
     const selectedClub = clubs.find((club) => club.id === storedClubId) || (clubs.length === 1 ? clubs[0] : null)
-    const hasMemberAccess = clubs.some((club) => club.role === "MEMBER")
 
-    if (selectedClub?.role === "MEMBER" || hasMemberAccess) {
-      const memberClub = selectedClub?.role === "MEMBER" ? selectedClub : clubs.find((club) => club.role === "MEMBER")!
+    if (selectedClub?.role === "MEMBER" || (!selectedClub && clubs.length > 0 && clubs.every((club) => club.role === "MEMBER"))) {
+      const memberClub = selectedClub || clubs.find((club) => club.role === "MEMBER")!
       localStorage.setItem("growcrm_active_club_id", memberClub.id)
       window.location.replace("/dashboard/member")
       throw new Error("Abriendo el espacio de socio.")
+    }
+
+    if (!selectedClub && clubs.some((club) => club.role === "MEMBER") && clubs.some((club) => club.role !== "MEMBER")) {
+      window.location.replace(`/dashboard?next=${encodeURIComponent(`${window.location.pathname}${window.location.search}`)}`)
+      throw new Error("Elegí el espacio de socio o administrador.")
     }
 
     const requestedReservationId = new URLSearchParams(window.location.search).get("reserva")

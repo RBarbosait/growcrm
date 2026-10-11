@@ -84,7 +84,13 @@ export default function ReservationQrEntryPage() {
         const memberClubs = clubs.filter((club) => club.role === "MEMBER")
         const adminClubs = clubs.filter((club) => club.role !== "MEMBER")
 
-        if (memberClubs.length > 0) {
+        if (memberClubs.length > 0 && adminClubs.length > 0) {
+          const qrPath = `/qr-reserva?reserva=${encodeURIComponent(reservationId)}`
+          window.location.replace(`/dashboard?next=${encodeURIComponent(qrPath)}`)
+          return
+        }
+
+        if (memberClubs.length > 0 && adminClubs.length === 0) {
           const memberClub = storedClub?.role === "MEMBER" ? storedClub : memberClubs[0]
           localStorage.setItem("growcrm_active_club_id", memberClub.id)
           window.location.replace("/dashboard/member")
@@ -96,13 +102,8 @@ export default function ReservationQrEntryPage() {
           return
         }
 
-        // Si el administrador ya tiene un club seleccionado (o solo administra uno),
-        // no hace falta pedir las reservas de todos los clubes antes de abrir el QR.
-        const knownAdminClub = storedClub?.role !== "MEMBER"
-          ? storedClub
-          : adminClubs.length === 1
-            ? adminClubs[0]
-            : null
+        // Si solo administra un club, no hace falta consultar el resto de reservas.
+        const knownAdminClub = adminClubs.length === 1 ? adminClubs[0] : null
         if (knownAdminClub) {
           localStorage.setItem("growcrm_active_club_id", knownAdminClub.id)
           window.location.replace(`/dashboard/reservas?reserva=${encodeURIComponent(reservationId)}&qrResolved=1`)

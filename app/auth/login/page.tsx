@@ -18,9 +18,9 @@ const loginMessages = [
   "Ya casi estás dentro...",
 ]
 
-function getReservationReturnPath() {
+function getSafeReturnPath() {
   const next = new URLSearchParams(window.location.search).get("next")
-  return (next?.startsWith("/qr-reserva?") || next?.startsWith("/dashboard/reservas?")) && !next.startsWith("//")
+  return (next?.startsWith("/qr-reserva?") || next?.startsWith("/dashboard/reservas?") || next?.startsWith("/invitacion/demo?")) && !next.startsWith("//")
     ? next
     : null
 }
@@ -48,7 +48,7 @@ const handleLogin = async (e: React.FormEvent) => {
       return
     }
 
-    router.push(getReservationReturnPath() || "/dashboard")
+    router.push(getSafeReturnPath() || "/dashboard")
   } catch (error) {
     console.error("LOGIN ERROR:", error)
     alert("No se pudo iniciar sesión. Intentá nuevamente.")
@@ -61,9 +61,10 @@ const handleLogin = async (e: React.FormEvent) => {
 const handleGoogleLogin = async () => {
   setIsLoading(true)
   try {
-  const reservationReturnPath = getReservationReturnPath()
-  const dashboardReturn = reservationReturnPath
-    ? `/dashboard?next=${encodeURIComponent(reservationReturnPath)}`
+  const returnPath = getSafeReturnPath()
+  const isReservationReturn = returnPath?.startsWith("/qr-reserva?") || returnPath?.startsWith("/dashboard/reservas?")
+  const loginReturn = returnPath
+    ? isReservationReturn ? `/dashboard?next=${encodeURIComponent(returnPath)}` : returnPath
     : "/dashboard"
   console.log("URL", process.env.NEXT_PUBLIC_SUPABASE_URL)
   console.log("ORIGIN", window.location.origin)
@@ -71,7 +72,7 @@ const handleGoogleLogin = async () => {
 const result = await supabase.auth.signInWithOAuth({
   provider: "google",
   options: {
-    redirectTo: `${window.location.origin}${dashboardReturn}`,
+  redirectTo: `${window.location.origin}${loginReturn}`,
     skipBrowserRedirect: true,
   },
 })

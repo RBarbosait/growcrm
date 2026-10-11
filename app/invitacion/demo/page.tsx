@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import {
   ArrowRight,
   Check,
@@ -10,6 +10,7 @@ import {
   User,
 } from "lucide-react"
 import { WaitOverlay } from "@/components/ui/wait-overlay"
+import { supabase } from "@/lib/supabase"
 
 const membershipMessages = [
   "Enviando tu solicitud al club...",
@@ -21,6 +22,9 @@ export default function InvitacionDemoPage() {
   const [showForm, setShowForm] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [signedInAccount, setSignedInAccount] = useState<{ email: string; name: string } | null>(null)
+  const [formError, setFormError] = useState("")
+  const [needsLogin, setNeedsLogin] = useState(false)
 
   const [form, setForm] = useState({
     nombre: "",
@@ -42,6 +46,32 @@ export default function InvitacionDemoPage() {
     }))
   }
 
+  useEffect(() => {
+    let active = true
+    void supabase.auth.getSession().then(({ data }) => {
+      const user = data.session?.user
+      if (!active || !user?.email) return
+      const name = user.user_metadata?.full_name || user.user_metadata?.name || ""
+      setSignedInAccount({ email: user.email, name })
+      setForm((current) => ({
+        ...current,
+        nombre: current.nombre || name.split(/\s+/)[0] || "",
+        apellido: current.apellido || name.split(/\s+/).slice(1).join(" "),
+        email: user.email || current.email,
+      }))
+    }).catch((error) => console.error("INVITATION SESSION ERROR:", error))
+    return () => { active = false }
+  }, [])
+
+  function goToLogin() {
+    const params = new URLSearchParams(window.location.search)
+    const clubId = params.get("clubId")
+    const invitationPath = clubId
+      ? `/invitacion/demo?clubId=${encodeURIComponent(clubId)}`
+      : "/invitacion/demo"
+    window.location.href = `/auth/login?next=${encodeURIComponent(invitationPath)}`
+  }
+
 const handleSubmit = async (
   event: React.FormEvent<HTMLFormElement>
 ) => {
@@ -51,19 +81,18 @@ const handleSubmit = async (
     !form.nombre ||
     !form.apellido ||
     !form.email ||
-    !form.password ||
-    !form.confirmPassword
+    (!signedInAccount && (!form.password || !form.confirmPassword))
   ) {
     alert("Completá todos los campos obligatorios.")
     return
   }
 
-  if (form.password !== form.confirmPassword) {
+  if (!signedInAccount && form.password !== form.confirmPassword) {
   alert("Las contraseñas no coinciden.")
   return
 }
 
-if (form.password.length < 6) {
+if (!signedInAccount && form.password.length < 6) {
   alert("La contraseña debe tener al menos 6 caracteres.")
   return
 }
@@ -74,6 +103,8 @@ if (form.password.length < 6) {
   }
 
   setIsSubmitting(true)
+  setFormError("")
+  setNeedsLogin(false)
   try {
     // Tomamos el clubId de la URL:
     // /invitacion/demo?clubId=...
@@ -85,6 +116,13 @@ if (form.password.length < 6) {
       return
     }
 
+    const { data: { session } } = await supabase.auth.getSession()
+    const signedInEmail = session?.user.email?.trim().toLowerCase()
+    if (signedInEmail && signedInEmail !== form.email.trim().toLowerCase()) {
+      setFormError("El email del formulario no coincide con la cuenta que inició sesión. Salí de la cuenta e ingresá con el email invitado.")
+      return
+    }
+
 const API_URL =
   "https://growcrm-api-production.up.railway.app"
 
@@ -92,15 +130,16 @@ const response = await fetch(
   `${API_URL}/membership-request`,
   {
     method: "POST",
-    headers: {
+      headers: {
       "Content-Type": "application/json",
+      ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
     },
 body: JSON.stringify({
   clubId,
   name: `${form.nombre.trim()} ${form.apellido.trim()}`,
-  email: form.email.trim(),
+  email: session?.user.email || form.email.trim(),
   phone: form.telefono.trim(),
-  password: form.password,
+  ...(session ? {} : { password: form.password }),
 }),
   }
 )
@@ -119,11 +158,12 @@ try {
 }
 
     if (!response.ok) {
+      if (data.code === "ACCOUNT_LOGIN_REQUIRED") {
+        setNeedsLogin(true)
+        setFormError("Este email ya tiene una cuenta GrowCRM. Iniciá sesión con esa cuenta; no necesitás crear otra contraseña.")
+        return
+      }
       if (response.status === 409) {
-        if (data.code === "ROLE_CONFLICT") {
-          alert(data.error)
-          return
-        }
         alert(
           data.error === "Membership request already pending"
             ? "Ya existe una solicitud pendiente para este email."
@@ -141,11 +181,7 @@ try {
   } catch (error) {
     console.error("❌ ERROR EN REGISTRO:", error)
 
-    alert(
-      error instanceof Error
-        ? error.message
-      : "No se pudo enviar la solicitud."
-    )
+    setFormError(error instanceof Error ? error.message : "No se pudo enviar la solicitud.")
   } finally {
     setIsSubmitting(false)
   }
@@ -289,6 +325,16 @@ try {
                   <ArrowRight className="h-4 w-4" />
                 </button>
 
+                {signedInAccount ? (
+                  <p className="mt-4 text-center text-xs leading-5 text-zinc-500">
+                    Ya ingresaste como <strong className="text-zinc-700">{signedInAccount.email}</strong>. Vamos a vincular la membresía con esa cuenta.
+                  </p>
+                ) : (
+                  <button type="button" onClick={goToLogin} className="mt-4 w-full text-center text-sm font-semibold text-[#007f63] hover:underline">
+                    Ya tengo cuenta GrowCRM · Iniciar sesión
+                  </button>
+                )}
+
                 <p className="mt-4 text-center text-xs leading-5 text-zinc-400">
                   El registro está sujeto a la aprobación del club.
                 </p>
@@ -332,8 +378,9 @@ try {
                 </h1>
 
                 <p className="mt-2 text-sm leading-6 text-zinc-500">
-                  Esta información será utilizada para gestionar tu
-                  incorporación al club.
+                  {signedInAccount
+                    ? "Vamos a solicitar tu incorporación usando la cuenta con la que ya ingresaste."
+                    : "Esta información será utilizada para gestionar tu incorporación al club."}
                 </p>
 
               </div>
@@ -374,9 +421,12 @@ try {
                   }
                   icon={<Mail className="h-4 w-4" />}
                   required
+                  readOnly={Boolean(signedInAccount)}
                 />
                 <p className="-mt-3 text-xs leading-5 text-zinc-500">
-                  Usá una cuenta distinta si ya sos administrador en GrowCRM. Si usás Gmail, podés probar un alias como nombre+socio@gmail.com; llega al mismo buzón y crea un acceso separado.
+                  {signedInAccount
+                    ? "Esta membresía quedará asociada a tu cuenta existente; tu contraseña no se modifica."
+                    : "Si ya tenés una cuenta GrowCRM, iniciá sesión para vincular esta membresía sin crear otra contraseña."}
                 </p>
 
                 <Field
@@ -390,7 +440,7 @@ try {
                   icon={<Phone className="h-4 w-4" />}
                 />
 
-                <div className="grid gap-5 sm:grid-cols-2">
+                {!signedInAccount && <div className="grid gap-5 sm:grid-cols-2">
 
                   <Field
                     label="Contraseña"
@@ -418,7 +468,12 @@ try {
                     minLength={6}
                   />
 
-                </div>
+                </div>}
+
+                {formError && <div role="alert" className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
+                  <p>{formError}</p>
+                  {needsLogin && <button type="button" onClick={goToLogin} className="mt-3 font-bold underline">Iniciar sesión con mi cuenta</button>}
+                </div>}
 
                 <label className="flex cursor-pointer items-start gap-3 rounded-2xl bg-[#f5faf8] p-4">
 
@@ -494,6 +549,7 @@ function Field({
   icon,
   required = false,
   minLength,
+  readOnly = false,
 }: {
   label: string
   placeholder: string
@@ -503,6 +559,7 @@ function Field({
   icon?: React.ReactNode
   required?: boolean
   minLength?: number
+  readOnly?: boolean
 }) {
   return (
     <div>
@@ -526,9 +583,10 @@ function Field({
           value={value}
           required={required}
           minLength={minLength}
+          readOnly={readOnly}
           placeholder={placeholder}
           onChange={(event) => onChange(event.target.value)}
-          className={`h-12 w-full rounded-xl border border-zinc-200 bg-white px-4 text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-[#007f63] focus:ring-4 focus:ring-[#007f63]/10 ${
+          className={`h-12 w-full rounded-xl border border-zinc-200 bg-white px-4 text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-[#007f63] focus:ring-4 focus:ring-[#007f63]/10 read-only:bg-zinc-50 ${
             icon ? "pl-10" : ""
           }`}
         />
