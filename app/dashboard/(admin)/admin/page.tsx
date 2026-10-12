@@ -24,6 +24,7 @@ import {
   Users,
   X,
   ArrowDownToLine,
+  MessageCircle,
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -504,6 +505,12 @@ const [saving, setSaving] = useState(false)
   />
 
   <DashboardNavItem
+    icon={MessageCircle}
+    label="Muro del club"
+    onClick={() => (window.location.href = "/dashboard/muro")}
+  />
+
+  <DashboardNavItem
     icon={Package}
     label="Stock"
     onClick={() => (window.location.href = "/dashboard/stock")}
@@ -675,6 +682,15 @@ const [saving, setSaving] = useState(false)
     onClick={() => {
       setMobileMenuOpen(false)
       window.location.href = "/dashboard/beneficios"
+    }}
+  />
+
+  <DashboardNavItem
+    icon={MessageCircle}
+    label="Muro del club"
+    onClick={() => {
+      setMobileMenuOpen(false)
+      window.location.href = "/dashboard/muro"
     }}
   />
 

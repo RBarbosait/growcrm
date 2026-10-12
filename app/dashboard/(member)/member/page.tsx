@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 import { BadgeCheck, Building2, Gift, LogOut, Package, Search, Sparkles, Tag, X, ShoppingBag, Pencil } from "lucide-react"
 import { WaitOverlay } from "@/components/ui/wait-overlay"
 import ReservationQR from "@/components/dashboard/reservation-qr"
+import ClubWall from "@/components/dashboard/club-wall"
 import { normalizeWhatsAppPhone } from "@/lib/phone"
 import { supabase } from "@/lib/supabase"
 
@@ -326,6 +327,7 @@ export default function MemberDashboardPage() {
           </a>
 
           <nav className="hidden items-center gap-7 text-sm font-semibold text-zinc-500 md:flex">
+            <a href="#muro" className="transition hover:text-[#007f63]">Muro</a>
             <a href="#catalogo" className="transition hover:text-[#007f63]">Catálogo</a>
             <a href="#mis-reservas" className="transition hover:text-[#007f63]">Mis reservas</a>
             <a href="#beneficios" className="transition hover:text-[#007f63]">Beneficios</a>
@@ -360,6 +362,8 @@ export default function MemberDashboardPage() {
       </header>
 
       <div className="mx-auto max-w-7xl px-5 pb-16 pt-7 sm:px-8 sm:pt-10">
+        <ClubWall clubId={activeClubId} clubName={data.club.name} role="MEMBER" />
+
         <section id="inicio" className="relative isolate mt-2 min-h-[300px] overflow-hidden rounded-[30px] bg-[#eee5d7] shadow-[0_18px_45px_-30px_rgba(26,45,35,.5)] sm:min-h-[320px]">
           <img src="/member-clubs-mural.png" alt="" aria-hidden="true" className="absolute inset-0 h-full w-full object-cover object-center" />
           <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-r from-[#f5eee3]/95 via-[#f5eee3]/70 to-transparent" />
