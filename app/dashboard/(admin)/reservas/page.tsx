@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { ArrowLeft, CalendarDays, Check, Clock3, Package, ScanLine, X } from "lucide-react"
 import { WaitOverlay } from "@/components/ui/wait-overlay"
@@ -11,6 +11,11 @@ import { supabase } from "@/lib/supabase"
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://growcrm-api-production.up.railway.app"
 const REQUEST_TIMEOUT_MS = 15_000
+const WHATSAPP_FOLLOW_UP_KEY = "growcrm_whatsapp_follow_up"
+
+function clearWhatsAppFollowUpStorage() {
+  try { sessionStorage.removeItem(WHATSAPP_FOLLOW_UP_KEY) } catch { /* Storage may be unavailable in private browsing. */ }
+}
 
 function withTimeout<T>(promise: Promise<T>, milliseconds: number, message: string): Promise<T> {
   let timeoutId: number | undefined
@@ -68,14 +73,32 @@ export default function ReservationsPage() {
   const [whatsAppFollowUp, setWhatsAppFollowUp] = useState<{ phone: string; message: string; note: string } | null>(null)
   const [messageCopied, setMessageCopied] = useState(false)
   const [openingWhatsApp, setOpeningWhatsApp] = useState(false)
-  const whatsAppMonitorRef = useRef<number | null>(null)
 
   useEffect(() => {
     void loadReservations()
   }, [])
 
-  useEffect(() => () => {
-    if (whatsAppMonitorRef.current !== null) window.clearInterval(whatsAppMonitorRef.current)
+  useEffect(() => {
+    const restoreWhatsAppFallback = () => {
+      if (document.visibilityState !== "visible") return
+      setOpeningWhatsApp(false)
+      let pending: string | null = null
+      try { pending = sessionStorage.getItem(WHATSAPP_FOLLOW_UP_KEY) } catch { return }
+      if (!pending) return
+      try {
+        setWhatsAppFollowUp(JSON.parse(pending))
+        setMessageCopied(false)
+      } catch {
+        clearWhatsAppFollowUpStorage()
+      }
+    }
+    restoreWhatsAppFallback()
+    window.addEventListener("pageshow", restoreWhatsAppFallback)
+    document.addEventListener("visibilitychange", restoreWhatsAppFallback)
+    return () => {
+      window.removeEventListener("pageshow", restoreWhatsAppFallback)
+      document.removeEventListener("visibilitychange", restoreWhatsAppFallback)
+    }
   }, [])
 
   async function getAuthContext() {
@@ -193,8 +216,6 @@ export default function ReservationsPage() {
   async function updateReservation(reservationId: string, status: "APPROVED" | "REJECTED" | "COMPLETED", authContext?: ReservationAuthContext) {
     if (processingId) return
     const currentReservation = reservations.find((item) => item.id === reservationId) || selectedReservation
-    let whatsAppWindow: Window | null = null
-    let whatsAppLoaded = false
     let whatsAppPhone = ""
     let whatsAppMessage = ""
     if (status === "APPROVED" && currentReservation) {
@@ -203,18 +224,6 @@ export default function ReservationsPage() {
         const qrImageUrl = getReservationQrImageUrl(window.location.origin, currentReservation.id, 400)
         const name = currentReservation.user.name || ""
         whatsAppMessage = `Hola${name ? ` ${name}` : ""}, tu pedido de ${currentReservation.product.name} (${reservationQuantityLabel(currentReservation)}) fue aprobado y ya podés retirarlo por el club. Presentá este QR al retirarlo: ${qrImageUrl}`
-        try {
-          whatsAppWindow = window.open(`https://wa.me/${whatsAppPhone}?text=${encodeURIComponent(whatsAppMessage)}`, "_blank")
-          if (whatsAppWindow) {
-            setOpeningWhatsApp(true)
-            whatsAppWindow.addEventListener("load", () => {
-              whatsAppLoaded = true
-              setOpeningWhatsApp(false)
-            }, { once: true })
-          }
-        } catch {
-          whatsAppWindow = null
-        }
       }
     }
     setProcessingId(reservationId)
@@ -237,37 +246,30 @@ export default function ReservationsPage() {
       setSelectedReservation((current) => current?.id === reservationId ? result : current)
       if (status === "COMPLETED") setSuccessNotice("Reserva marcada como entregada y guardada.")
       if (status === "APPROVED" && currentReservation) {
-        const fallback = (note: string) => {
-          setOpeningWhatsApp(false)
-          setMessageCopied(false)
-          setWhatsAppFollowUp({ phone: whatsAppPhone, message: whatsAppMessage, note })
+        const followUp = {
+          phone: whatsAppPhone,
+          message: whatsAppMessage,
+          note: "La reserva quedó aprobada. Si WhatsApp no llegó a abrirse o el mensaje no se envió, podés copiarlo o volver a abrir WhatsApp desde acá.",
         }
-
         if (!whatsAppPhone) {
-          fallback("La reserva quedó aprobada, pero el teléfono del socio no tiene un código de país válido. Podés copiar este mensaje y avisarle por otro medio.")
-        } else if (!whatsAppWindow || whatsAppWindow.closed) {
-          fallback("La reserva está aprobada y lista para retirar. No se pudo abrir WhatsApp automáticamente; copiá el mensaje para avisarle al socio.")
+          setWhatsAppFollowUp({
+            ...followUp,
+            note: "La reserva quedó aprobada, pero el teléfono del socio no tiene un código de país válido. Podés copiar el mensaje y avisarle por otro medio.",
+          })
         } else {
-          const popup = whatsAppWindow
-          let checks = 0
-          if (whatsAppMonitorRef.current !== null) window.clearInterval(whatsAppMonitorRef.current)
-          whatsAppMonitorRef.current = window.setInterval(() => {
-            checks += 1
-            if (popup.closed) {
-              if (whatsAppMonitorRef.current !== null) window.clearInterval(whatsAppMonitorRef.current)
-              whatsAppMonitorRef.current = null
-              fallback("La reserva está aprobada y lista para retirar. WhatsApp se cerró o no quedó abierto; copiá el mensaje para avisarle al socio.")
-            } else if (checks >= 30 && !whatsAppLoaded) {
-              if (whatsAppMonitorRef.current !== null) window.clearInterval(whatsAppMonitorRef.current)
-              whatsAppMonitorRef.current = null
-              fallback("La reserva está aprobada y lista para retirar, pero WhatsApp tardó en abrir. Podés copiar el mensaje o abrir WhatsApp manualmente.")
-            }
-          }, 500)
+          setWhatsAppFollowUp(followUp)
+          try { sessionStorage.setItem(WHATSAPP_FOLLOW_UP_KEY, JSON.stringify(followUp)) } catch { /* Keep the in-memory fallback when storage is unavailable. */ }
+          setOpeningWhatsApp(true)
+          const url = `https://wa.me/${whatsAppPhone}?text=${encodeURIComponent(whatsAppMessage)}`
+          window.setTimeout(() => window.location.assign(url), 250)
+          window.setTimeout(() => {
+            if (document.visibilityState === "visible") setOpeningWhatsApp(false)
+          }, 8_000)
         }
       }
     } catch (actionError) {
       setOpeningWhatsApp(false)
-      if (whatsAppWindow && !whatsAppWindow.closed) whatsAppWindow.close()
+      clearWhatsAppFollowUpStorage()
       setError(actionError instanceof Error ? actionError.message : "No se pudo actualizar la reserva.")
     } finally {
       setProcessingId(null)
@@ -304,7 +306,7 @@ export default function ReservationsPage() {
         {error && <p role="alert" className="mt-6 rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm font-medium text-red-800">{error}</p>}
         {successNotice && <p role="status" className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm font-medium text-emerald-800">{successNotice}</p>}
 
-        {whatsAppFollowUp && <section role="status" className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-950 sm:p-5"><h2 className="font-bold">Pedido aprobado y listo para retirar</h2><p className="mt-1 text-sm">{whatsAppFollowUp.note}</p><blockquote className="mt-3 rounded-xl bg-white/80 p-3 text-sm">{whatsAppFollowUp.message}</blockquote><div className="mt-3 flex flex-wrap gap-2"><button type="button" onClick={() => { void navigator.clipboard.writeText(whatsAppFollowUp.message).then(() => setMessageCopied(true)).catch(() => setError("No se pudo copiar automáticamente. Seleccioná el mensaje para copiarlo.")) }} className="rounded-xl border border-emerald-300 bg-white px-4 py-2 text-sm font-semibold">{messageCopied ? "Mensaje copiado" : "Copiar mensaje"}</button>{whatsAppFollowUp.phone && <a href={`https://wa.me/${whatsAppFollowUp.phone}?text=${encodeURIComponent(whatsAppFollowUp.message)}`} target="_blank" rel="noreferrer" className="rounded-xl bg-emerald-800 px-4 py-2 text-sm font-semibold text-white">Abrir WhatsApp</a>}<button type="button" onClick={() => setWhatsAppFollowUp(null)} className="rounded-xl px-3 py-2 text-sm font-semibold text-emerald-900">Cerrar</button></div></section>}
+        {whatsAppFollowUp && <section role="status" className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-950 sm:p-5"><h2 className="font-bold">Pedido aprobado y listo para retirar</h2><p className="mt-1 text-sm">{whatsAppFollowUp.note}</p><blockquote className="mt-3 rounded-xl bg-white/80 p-3 text-sm">{whatsAppFollowUp.message}</blockquote><div className="mt-3 flex flex-wrap gap-2"><button type="button" onClick={() => { void navigator.clipboard.writeText(whatsAppFollowUp.message).then(() => setMessageCopied(true)).catch(() => setError("No se pudo copiar automáticamente. Seleccioná el mensaje para copiarlo.")) }} className="rounded-xl border border-emerald-300 bg-white px-4 py-2 text-sm font-semibold">{messageCopied ? "Mensaje copiado" : "Copiar mensaje"}</button>{whatsAppFollowUp.phone && <a href={`https://wa.me/${whatsAppFollowUp.phone}?text=${encodeURIComponent(whatsAppFollowUp.message)}`} className="rounded-xl bg-emerald-800 px-4 py-2 text-sm font-semibold text-white">Abrir WhatsApp</a>}<button type="button" onClick={() => { setWhatsAppFollowUp(null); clearWhatsAppFollowUpStorage() }} className="rounded-xl px-3 py-2 text-sm font-semibold text-emerald-900">Cerrar</button></div></section>}
 
         <div className="mt-7 flex gap-2 overflow-x-auto pb-2">
           {filters.map((item) => {
