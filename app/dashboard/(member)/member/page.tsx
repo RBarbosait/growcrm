@@ -362,8 +362,6 @@ export default function MemberDashboardPage() {
       </header>
 
       <div className="mx-auto max-w-7xl px-5 pb-16 pt-7 sm:px-8 sm:pt-10">
-        <ClubWall clubId={activeClubId} clubName={data.club.name} role="MEMBER" />
-
         <section id="inicio" className="relative isolate mt-2 min-h-[300px] overflow-hidden rounded-[30px] bg-[#eee5d7] shadow-[0_18px_45px_-30px_rgba(26,45,35,.5)] sm:min-h-[320px]">
           <img src="/member-clubs-mural.png" alt="" aria-hidden="true" className="absolute inset-0 h-full w-full object-cover object-center" />
           <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-r from-[#f5eee3]/95 via-[#f5eee3]/70 to-transparent" />
@@ -371,19 +369,20 @@ export default function MemberDashboardPage() {
             <div className="max-w-2xl">
               <div className="inline-flex items-center gap-2 rounded-full border border-emerald-900/10 bg-white/75 px-3.5 py-2 text-xs font-bold uppercase tracking-[0.14em] text-emerald-900 backdrop-blur-sm">
                 <Sparkles className="h-4 w-4" />
-                Bienvenido a {data.club.name}
+                ¡Qué bueno tenerte, {(data.user.name?.trim() || data.user.email.split("@")[0]).split(/\s+/)[0]}!
               </div>
               <h1 className="mt-5 max-w-xl font-serif text-4xl font-semibold leading-[1.08] tracking-tight text-[#172c29] sm:text-6xl">
                 Tu club, a tu manera.
               </h1>
               <p className="mt-4 max-w-lg text-sm leading-6 text-[#4d5b55] sm:text-base sm:leading-7">
-                Un espacio para descubrir y disfrutar todo lo que tu comunidad preparó para vos.
+                Un espacio para encontrarte con tu comunidad, descubrir lo que hay para vos y disfrutar todo lo que prepara el club.
               </p>
               <div className="mt-6 flex flex-wrap gap-3">
-                <a href="#catalogo" className="inline-flex items-center rounded-xl bg-[#174f43] px-5 py-3 text-sm font-bold text-white shadow-md transition hover:bg-[#103f35]">Explorar catálogo <span className="ml-2" aria-hidden="true">→</span></a>
+                <a href="#muro" className="inline-flex items-center rounded-xl bg-[#174f43] px-5 py-3 text-sm font-bold text-white shadow-md transition hover:bg-[#103f35]">Ir al muro <span className="ml-2" aria-hidden="true">→</span></a>
+                <a href="#catalogo" className="rounded-xl border border-[#174f43]/20 bg-white/70 px-5 py-3 text-sm font-semibold text-[#174f43] transition hover:bg-white">Explorar catálogo</a>
                 <a href="#beneficios" className="rounded-xl border border-[#174f43]/20 bg-white/70 px-5 py-3 text-sm font-semibold text-[#174f43] transition hover:bg-white">Ver beneficios</a>
               </div>
-              <p className="mt-4 text-xs font-medium text-[#52635a]">Una selección de {data.club.name}</p>
+              <p className="mt-4 text-xs font-medium text-[#52635a]">Tu comunidad, tus novedades y tus beneficios en un solo lugar.</p>
             </div>
           </div>
         </section>
@@ -403,6 +402,8 @@ export default function MemberDashboardPage() {
           )}
           <a href="#beneficios" className="text-sm font-semibold text-[#26765f] transition hover:text-[#174f43]">{data.benefits.length} {data.benefits.length === 1 ? "beneficio" : "beneficios"} <span aria-hidden="true">→</span></a>
         </section>
+
+        <ClubWall clubId={activeClubId} clubName={data.club.name} role="MEMBER" />
 
         <section id="catalogo" className="scroll-mt-24 pt-12">
           <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
