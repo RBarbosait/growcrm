@@ -67,6 +67,7 @@ export default function ReservationsPage() {
   const [scannerOpen, setScannerOpen] = useState(false)
   const [whatsAppFollowUp, setWhatsAppFollowUp] = useState<{ phone: string; message: string; note: string } | null>(null)
   const [messageCopied, setMessageCopied] = useState(false)
+  const [openingWhatsApp, setOpeningWhatsApp] = useState(false)
   const whatsAppMonitorRef = useRef<number | null>(null)
 
   useEffect(() => {
@@ -193,14 +194,23 @@ export default function ReservationsPage() {
     if (processingId) return
     const currentReservation = reservations.find((item) => item.id === reservationId) || selectedReservation
     let whatsAppWindow: Window | null = null
+    let whatsAppLoaded = false
+    let whatsAppPhone = ""
+    let whatsAppMessage = ""
     if (status === "APPROVED" && currentReservation) {
-      const phone = normalizeWhatsAppPhone(currentReservation.user.phone || "")
-      if (phone) {
+      whatsAppPhone = normalizeWhatsAppPhone(currentReservation.user.phone || "") || ""
+      if (whatsAppPhone) {
+        const qrImageUrl = getReservationQrImageUrl(window.location.origin, currentReservation.id, 400)
+        const name = currentReservation.user.name || ""
+        whatsAppMessage = `Hola${name ? ` ${name}` : ""}, tu pedido de ${currentReservation.product.name} (${reservationQuantityLabel(currentReservation)}) fue aprobado y ya podés retirarlo por el club. Presentá este QR al retirarlo: ${qrImageUrl}`
         try {
-          whatsAppWindow = window.open("about:blank", "_blank")
+          whatsAppWindow = window.open(`https://wa.me/${whatsAppPhone}?text=${encodeURIComponent(whatsAppMessage)}`, "_blank")
           if (whatsAppWindow) {
-            whatsAppWindow.document.write("<!doctype html><title>Abriendo WhatsApp</title><p style=\"font:16px system-ui;padding:24px\">La reserva se está aprobando. Abriendo WhatsApp…</p>")
-            whatsAppWindow.document.close()
+            setOpeningWhatsApp(true)
+            whatsAppWindow.addEventListener("load", () => {
+              whatsAppLoaded = true
+              setOpeningWhatsApp(false)
+            }, { once: true })
           }
         } catch {
           whatsAppWindow = null
@@ -227,53 +237,36 @@ export default function ReservationsPage() {
       setSelectedReservation((current) => current?.id === reservationId ? result : current)
       if (status === "COMPLETED") setSuccessNotice("Reserva marcada como entregada y guardada.")
       if (status === "APPROVED" && currentReservation) {
-        const name = result.user?.name || currentReservation.user.name || ""
-        const qrImageUrl = getReservationQrImageUrl(window.location.origin, result.id, 400)
-        const message = `Hola${name ? ` ${name}` : ""}, tu pedido de ${result.product.name} (${reservationQuantityLabel(result)}) fue aprobado y ya podés retirarlo por el club. Presentá este QR al retirarlo: ${qrImageUrl}`
-        const rawPhone = result.user?.phone || currentReservation.user.phone || ""
-        const phone = normalizeWhatsAppPhone(rawPhone) || ""
         const fallback = (note: string) => {
+          setOpeningWhatsApp(false)
           setMessageCopied(false)
-          setWhatsAppFollowUp({ phone, message, note })
+          setWhatsAppFollowUp({ phone: whatsAppPhone, message: whatsAppMessage, note })
         }
 
-        if (!phone) {
+        if (!whatsAppPhone) {
           fallback("La reserva quedó aprobada, pero el teléfono del socio no tiene un código de país válido. Podés copiar este mensaje y avisarle por otro medio.")
         } else if (!whatsAppWindow || whatsAppWindow.closed) {
           fallback("La reserva está aprobada y lista para retirar. No se pudo abrir WhatsApp automáticamente; copiá el mensaje para avisarle al socio.")
         } else {
-          const whatsappUrl = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`
-          try {
-            whatsAppWindow.location.replace(whatsappUrl)
-            const popup = whatsAppWindow
-            let checks = 0
-            if (whatsAppMonitorRef.current !== null) window.clearInterval(whatsAppMonitorRef.current)
-            whatsAppMonitorRef.current = window.setInterval(() => {
-              checks += 1
-              if (popup.closed) {
-                if (whatsAppMonitorRef.current !== null) window.clearInterval(whatsAppMonitorRef.current)
-                whatsAppMonitorRef.current = null
-                fallback("La reserva está aprobada y lista para retirar. WhatsApp se cerró o no quedó abierto; copiá el mensaje para avisarle al socio.")
-                return
-              }
-              if (checks >= 20) {
-                try {
-                  if (popup.location.href === "about:blank") {
-                    if (whatsAppMonitorRef.current !== null) window.clearInterval(whatsAppMonitorRef.current)
-                    whatsAppMonitorRef.current = null
-                    fallback("La reserva está aprobada y lista para retirar. WhatsApp no llegó a abrirse; copiá el mensaje para avisarle al socio.")
-                  }
-                } catch {
-                  // WhatsApp cargó en otro origen: el navegador impide inspeccionar su contenido.
-                }
-              }
-            }, 500)
-          } catch {
-            fallback("La reserva está aprobada y lista para retirar. No se pudo abrir WhatsApp; copiá el mensaje para avisarle al socio.")
-          }
+          const popup = whatsAppWindow
+          let checks = 0
+          if (whatsAppMonitorRef.current !== null) window.clearInterval(whatsAppMonitorRef.current)
+          whatsAppMonitorRef.current = window.setInterval(() => {
+            checks += 1
+            if (popup.closed) {
+              if (whatsAppMonitorRef.current !== null) window.clearInterval(whatsAppMonitorRef.current)
+              whatsAppMonitorRef.current = null
+              fallback("La reserva está aprobada y lista para retirar. WhatsApp se cerró o no quedó abierto; copiá el mensaje para avisarle al socio.")
+            } else if (checks >= 30 && !whatsAppLoaded) {
+              if (whatsAppMonitorRef.current !== null) window.clearInterval(whatsAppMonitorRef.current)
+              whatsAppMonitorRef.current = null
+              fallback("La reserva está aprobada y lista para retirar, pero WhatsApp tardó en abrir. Podés copiar el mensaje o abrir WhatsApp manualmente.")
+            }
+          }, 500)
         }
       }
     } catch (actionError) {
+      setOpeningWhatsApp(false)
       if (whatsAppWindow && !whatsAppWindow.closed) whatsAppWindow.close()
       setError(actionError instanceof Error ? actionError.message : "No se pudo actualizar la reserva.")
     } finally {
@@ -289,7 +282,7 @@ export default function ReservationsPage() {
 
   return (
     <main className="min-h-screen bg-[#f8faf9] text-[#123238]">
-      <WaitOverlay open={loading || Boolean(processingId)} label={processingId ? "Actualizando reserva" : "Cargando reservas"} messages={processingId ? ["Actualizando el estado…", "Ajustando el stock del catálogo…"] : ["Buscando solicitudes de socios…", "Preparando la bandeja del club…"]} />
+      <WaitOverlay open={loading || Boolean(processingId) || openingWhatsApp} label={openingWhatsApp ? "Abriendo WhatsApp" : processingId ? "Actualizando reserva" : "Cargando reservas"} messages={openingWhatsApp ? ["Aprobando la reserva…", "Abriendo WhatsApp Web…"] : processingId ? ["Actualizando el estado…", "Ajustando el stock del catálogo…"] : ["Buscando solicitudes de socios…", "Preparando la bandeja del club…"]} />
       <header className="border-b border-zinc-200 bg-white">
         <div className="mx-auto flex h-[76px] max-w-7xl items-center justify-between px-5 sm:px-8">
           <Link href="/dashboard/admin" className="inline-flex items-center gap-3 text-sm font-semibold text-zinc-600 hover:text-emerald-800"><ArrowLeft className="h-4 w-4" /> Volver al catálogo</Link>
