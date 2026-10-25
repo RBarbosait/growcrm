@@ -506,7 +506,7 @@ const [saving, setSaving] = useState(false)
 
   <DashboardNavItem
     icon={MessageCircle}
-    label="Muro del club"
+    label="Comunicación"
     onClick={() => (window.location.href = "/dashboard/muro")}
   />
 
@@ -535,15 +535,9 @@ const [saving, setSaving] = useState(false)
   />
 
   <DashboardNavItem
-    icon={Bell}
-    label="Comunicación"
-    disabled
-  />
-
-  <DashboardNavItem
     icon={BarChart3}
     label="Reportes"
-    disabled
+    onClick={() => (window.location.href = "/dashboard/reportes")}
   />
 
   <div className="my-4 border-t border-zinc-100" />
@@ -551,7 +545,7 @@ const [saving, setSaving] = useState(false)
   <DashboardNavItem
     icon={Settings}
     label="Configuración"
-    disabled
+    onClick={() => (window.location.href = "/dashboard/configuracion")}
   />
 
 </nav>
@@ -687,7 +681,7 @@ const [saving, setSaving] = useState(false)
 
   <DashboardNavItem
     icon={MessageCircle}
-    label="Muro del club"
+    label="Comunicación"
     onClick={() => {
       setMobileMenuOpen(false)
       window.location.href = "/dashboard/muro"
@@ -728,15 +722,12 @@ const [saving, setSaving] = useState(false)
   />
 
   <DashboardNavItem
-    icon={Bell}
-    label="Comunicación"
-    disabled
-  />
-
-  <DashboardNavItem
     icon={BarChart3}
     label="Reportes"
-    disabled
+    onClick={() => {
+      setMobileMenuOpen(false)
+      window.location.href = "/dashboard/reportes"
+    }}
   />
 
   <div className="my-4 border-t border-zinc-100" />
@@ -744,7 +735,10 @@ const [saving, setSaving] = useState(false)
   <DashboardNavItem
     icon={Settings}
     label="Configuración"
-    disabled
+    onClick={() => {
+      setMobileMenuOpen(false)
+      window.location.href = "/dashboard/configuracion"
+    }}
   />
 
 </nav>
