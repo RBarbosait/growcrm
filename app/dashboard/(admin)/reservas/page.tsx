@@ -72,7 +72,6 @@ export default function ReservationsPage() {
   const [scannerOpen, setScannerOpen] = useState(false)
   const [whatsAppFollowUp, setWhatsAppFollowUp] = useState<{ phone: string; message: string; note: string } | null>(null)
   const [messageCopied, setMessageCopied] = useState(false)
-  const [openingWhatsApp, setOpeningWhatsApp] = useState(false)
 
   useEffect(() => {
     void loadReservations()
@@ -81,7 +80,6 @@ export default function ReservationsPage() {
   useEffect(() => {
     const restoreWhatsAppFallback = () => {
       if (document.visibilityState !== "visible") return
-      setOpeningWhatsApp(false)
       let pending: string | null = null
       try { pending = sessionStorage.getItem(WHATSAPP_FOLLOW_UP_KEY) } catch { return }
       if (!pending) return
@@ -249,7 +247,9 @@ export default function ReservationsPage() {
         const followUp = {
           phone: whatsAppPhone,
           message: whatsAppMessage,
-          note: "La reserva quedó aprobada. Si WhatsApp no llegó a abrirse o el mensaje no se envió, podés copiarlo o volver a abrir WhatsApp desde acá.",
+          note: result.emailSent
+            ? "La reserva quedó aprobada y enviamos el aviso con el QR al correo del socio. También podés avisarle por WhatsApp desde acá."
+            : "La reserva quedó aprobada. No pudimos confirmar el envío del correo; podés avisarle por WhatsApp desde acá.",
         }
         if (!whatsAppPhone) {
           setWhatsAppFollowUp({
@@ -259,16 +259,19 @@ export default function ReservationsPage() {
         } else {
           setWhatsAppFollowUp(followUp)
           try { sessionStorage.setItem(WHATSAPP_FOLLOW_UP_KEY, JSON.stringify(followUp)) } catch { /* Keep the in-memory fallback when storage is unavailable. */ }
-          setOpeningWhatsApp(true)
           const url = `https://wa.me/${whatsAppPhone}?text=${encodeURIComponent(whatsAppMessage)}`
-          window.setTimeout(() => window.location.assign(url), 250)
-          window.setTimeout(() => {
-            if (document.visibilityState === "visible") setOpeningWhatsApp(false)
-          }, 8_000)
+          const whatsAppTab = window.open(url, "_blank")
+          if (whatsAppTab) {
+            whatsAppTab.opener = null
+          } else {
+            setWhatsAppFollowUp({
+              ...followUp,
+              note: `${followUp.note} El navegador bloqueó la pestaña automática; abrí WhatsApp con el botón de abajo.`,
+            })
+          }
         }
       }
     } catch (actionError) {
-      setOpeningWhatsApp(false)
       clearWhatsAppFollowUpStorage()
       setError(actionError instanceof Error ? actionError.message : "No se pudo actualizar la reserva.")
     } finally {
@@ -284,7 +287,7 @@ export default function ReservationsPage() {
 
   return (
     <main className="min-h-screen bg-[#f8faf9] text-[#123238]">
-      <WaitOverlay open={loading || Boolean(processingId) || openingWhatsApp} label={openingWhatsApp ? "Abriendo WhatsApp" : processingId ? "Actualizando reserva" : "Cargando reservas"} messages={openingWhatsApp ? ["Aprobando la reserva…", "Abriendo WhatsApp Web…"] : processingId ? ["Actualizando el estado…", "Ajustando el stock del catálogo…"] : ["Buscando solicitudes de socios…", "Preparando la bandeja del club…"]} />
+      <WaitOverlay open={loading || Boolean(processingId)} label={processingId ? "Actualizando reserva" : "Cargando reservas"} messages={processingId ? ["Actualizando el estado…", "Ajustando el stock del catálogo…"] : ["Buscando solicitudes de socios…", "Preparando la bandeja del club…"]} />
       <header className="border-b border-zinc-200 bg-white">
         <div className="mx-auto flex h-[76px] max-w-7xl items-center justify-between px-5 sm:px-8">
           <Link href="/dashboard/admin" className="inline-flex items-center gap-3 text-sm font-semibold text-zinc-600 hover:text-emerald-800"><ArrowLeft className="h-4 w-4" /> Volver al catálogo</Link>
@@ -306,7 +309,7 @@ export default function ReservationsPage() {
         {error && <p role="alert" className="mt-6 rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm font-medium text-red-800">{error}</p>}
         {successNotice && <p role="status" className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm font-medium text-emerald-800">{successNotice}</p>}
 
-        {whatsAppFollowUp && <section role="status" className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-950 sm:p-5"><h2 className="font-bold">Pedido aprobado y listo para retirar</h2><p className="mt-1 text-sm">{whatsAppFollowUp.note}</p><blockquote className="mt-3 rounded-xl bg-white/80 p-3 text-sm">{whatsAppFollowUp.message}</blockquote><div className="mt-3 flex flex-wrap gap-2"><button type="button" onClick={() => { void navigator.clipboard.writeText(whatsAppFollowUp.message).then(() => setMessageCopied(true)).catch(() => setError("No se pudo copiar automáticamente. Seleccioná el mensaje para copiarlo.")) }} className="rounded-xl border border-emerald-300 bg-white px-4 py-2 text-sm font-semibold">{messageCopied ? "Mensaje copiado" : "Copiar mensaje"}</button>{whatsAppFollowUp.phone && <a href={`https://wa.me/${whatsAppFollowUp.phone}?text=${encodeURIComponent(whatsAppFollowUp.message)}`} className="rounded-xl bg-emerald-800 px-4 py-2 text-sm font-semibold text-white">Abrir WhatsApp</a>}<button type="button" onClick={() => { setWhatsAppFollowUp(null); clearWhatsAppFollowUpStorage() }} className="rounded-xl px-3 py-2 text-sm font-semibold text-emerald-900">Cerrar</button></div></section>}
+        {whatsAppFollowUp && <section role="status" className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-950 sm:p-5"><h2 className="font-bold">Pedido aprobado y listo para retirar</h2><p className="mt-1 text-sm">{whatsAppFollowUp.note}</p><blockquote className="mt-3 rounded-xl bg-white/80 p-3 text-sm">{whatsAppFollowUp.message}</blockquote><div className="mt-3 flex flex-wrap gap-2"><button type="button" onClick={() => { void navigator.clipboard.writeText(whatsAppFollowUp.message).then(() => setMessageCopied(true)).catch(() => setError("No se pudo copiar automáticamente. Seleccioná el mensaje para copiarlo.")) }} className="rounded-xl border border-emerald-300 bg-white px-4 py-2 text-sm font-semibold">{messageCopied ? "Mensaje copiado" : "Copiar mensaje"}</button>{whatsAppFollowUp.phone && <a href={`https://wa.me/${whatsAppFollowUp.phone}?text=${encodeURIComponent(whatsAppFollowUp.message)}`} target="_blank" rel="noopener noreferrer" className="rounded-xl bg-emerald-800 px-4 py-2 text-sm font-semibold text-white">Abrir WhatsApp</a>}<button type="button" onClick={() => { setWhatsAppFollowUp(null); clearWhatsAppFollowUpStorage() }} className="rounded-xl px-3 py-2 text-sm font-semibold text-emerald-900">Cerrar</button></div></section>}
 
         <div className="mt-7 flex gap-2 overflow-x-auto pb-2">
           {filters.map((item) => {

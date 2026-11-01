@@ -18,6 +18,7 @@ import {
   X,
 } from "lucide-react";
 import { WaitOverlay } from "@/components/ui/wait-overlay";
+import { supabase } from "@/lib/supabase";
 
 const memberLoadingMessages = [
   "Estamos cargando la información del club...",
@@ -44,6 +45,9 @@ type MembershipRequest = {
   name: string;
   email: string;
   phone: string | null;
+  identityFullName?: string | null;
+  identityNumber?: string | null;
+  hasIdentityDocuments?: boolean;
   user?: {
     id: string;
     name: string | null;
@@ -96,7 +100,6 @@ const [editName, setEditName] = useState("");
 const [editEmail, setEditEmail] = useState("");
 const [editPhone, setEditPhone] = useState("");
 const [savingMember, setSavingMember] = useState(false);
-const [gmailDraftUrl, setGmailDraftUrl] = useState<string | null>(null);
 
   /*
    * Por ahora usamos el club guardado por el dashboard.
@@ -118,9 +121,14 @@ async function loadData() {
   try {
     setLoading(true);
 
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) throw new Error("Iniciá sesión nuevamente para ver las solicitudes.");
+    const adminHeaders = { Authorization: `Bearer ${session.access_token}` };
+
     const [requestsResponse, membersResponse] = await Promise.all([
       fetch(
-        `${API_URL}/club/${clubId}/membership-requests`
+        `${API_URL}/club/${clubId}/membership-requests`,
+        { headers: adminHeaders }
       ),
       fetch(
         `${API_URL}/club/${clubId}/members`
@@ -162,90 +170,25 @@ useEffect(() => {
     id: string,
     action: "approve" | "reject"
   ) {
-    let gmailTab: Window | null = null;
-
     try {
       setProcessingId(id);
-      setGmailDraftUrl(null);
 
-      if (action === "approve") {
-        // Reservamos la pestaña desde el clic para que Chrome permita abrir Gmail
-        // tras la respuesta de la API. La pestaña muestra estado, nunca queda vacía.
-        gmailTab = window.open("about:blank", "_blank");
-        if (gmailTab) {
-          gmailTab.document.open();
-          gmailTab.document.write(`<!doctype html>
-            <html lang="es">
-              <head>
-                <meta charset="utf-8" />
-                <meta name="viewport" content="width=device-width, initial-scale=1" />
-                <title>Aprobando socio | GrowCRM</title>
-                <style>
-                  * { box-sizing: border-box; }
-                  body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 24px; background: #f5faf8; color: #092f35; font-family: Arial, sans-serif; }
-                  main { width: min(100%, 390px); padding: 32px; border: 1px solid #dcebe6; border-radius: 24px; background: white; text-align: center; box-shadow: 0 18px 50px #092f3518; }
-                  .spinner { width: 42px; height: 42px; margin: 0 auto 20px; border: 4px solid #e6f5f0; border-top-color: #007f63; border-radius: 50%; animation: spin .8s linear infinite; }
-                  .track { height: 7px; margin-top: 24px; overflow: hidden; border-radius: 99px; background: #e6f5f0; }
-                  .bar { width: 40%; height: 100%; border-radius: inherit; background: #007f63; animation: slide 1.2s ease-in-out infinite alternate; }
-                  p { margin: 0; color: #647570; font-size: 14px; line-height: 1.6; }
-                  h1 { margin: 0 0 8px; font-size: 20px; }
-                  @keyframes spin { to { transform: rotate(360deg); } }
-                  @keyframes slide { from { transform: translateX(-15%); } to { transform: translateX(160%); } }
-                </style>
-              </head>
-              <body>
-                <main>
-                  <div class="spinner" aria-hidden="true"></div>
-                  <h1>Confirmando aprobación</h1>
-                  <p>Estamos esperando la respuesta del servidor. Gmail se abrirá cuando la aprobación esté confirmada.</p>
-                  <div class="track" role="progressbar" aria-label="Aprobación en curso"><div class="bar"></div></div>
-                </main>
-              </body>
-            </html>`);
-          gmailTab.document.close();
-        }
-      }
-
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) throw new Error("Iniciá sesión nuevamente para continuar.");
       const response = await fetch(
-        `${API_URL}/membership-request/${id}/${action}`,
-        {
-          method: "PATCH",
-        }
+        API_URL + "/membership-request/" + id + "/" + action,
+        { method: "PATCH", headers: { Authorization: `Bearer ${session.access_token}` } }
       );
-
       const result = await response.json().catch(() => ({}));
+
       if (!response.ok) {
         throw new Error(result.error || "No se pudo actualizar la solicitud");
       }
 
-      if (action === "approve") {
-        const approvedRequest = result.request;
-        const clubName = approvedRequest.club?.name || "el club";
-        const loginUrl = "https://growcrm-club.pages.dev/auth/login";
-
-        const subject = `¡Tu ingreso a ${clubName} fue aprobado!`;
-        const body = `Hola ${approvedRequest.name},
-
-Tu ingreso a ${clubName} fue aprobado. Tu usuario ya está asociado al club y podés acceder para comenzar a disfrutar tu membresía:
-
-${loginUrl}
-
-Ingresá con tu email y la contraseña asociada a tu cuenta de GrowCRM. Si es tu primera cuenta, usá la contraseña que elegiste al registrarte.
-
-¡Te damos la bienvenida!`;
-
-        const gmailUrl =
-          `https://mail.google.com/mail/?view=cm&fs=1` +
-          `&to=${encodeURIComponent(approvedRequest.email)}` +
-          `&su=${encodeURIComponent(subject)}` +
-          `&body=${encodeURIComponent(body)}`;
-
-        if (gmailTab && !gmailTab.closed) {
-          gmailTab.location.href = gmailUrl;
-        } else {
-          // Respaldo si el navegador bloqueó la pestaña emergente.
-          setGmailDraftUrl(gmailUrl);
-        }
+      if (action === "approve" && result.emailSent === false) {
+        alert(
+          "El socio quedó aprobado, pero no se pudo enviar el correo automático. Revisá la configuración de Gmail API en la API."
+        );
       }
 
       setRequests((current) =>
@@ -253,13 +196,31 @@ Ingresá con tu email y la contraseña asociada a tu cuenta de GrowCRM. Si es tu
       );
       void loadData();
     } catch (error) {
-      if (gmailTab && !gmailTab.closed) gmailTab.close();
       console.error("MEMBERSHIP REQUEST UPDATE ERROR:", error);
       alert(error instanceof Error ? error.message : "No se pudo actualizar la solicitud.");
     } finally {
       setProcessingId(null);
     }
   }
+
+async function viewIdentityDocuments(requestId: string) {
+  try {
+    setIdentityDocsLoading(requestId);
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) throw new Error("Iniciá sesión nuevamente para continuar.");
+    const response = await fetch(`${API_URL}/membership-request/${requestId}/identity-documents`, {
+      headers: { Authorization: `Bearer ${session.access_token}` },
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || "No se pudieron abrir los documentos.");
+    setIdentityDocs(data);
+  } catch (error) {
+    alert(error instanceof Error ? error.message : "No se pudieron abrir los documentos.");
+  } finally {
+    setIdentityDocsLoading(null);
+  }
+}
+
 async function toggleMember(member: Member) {
   try {
     setMemberActionId(member.id);
@@ -474,6 +435,21 @@ const filteredPending = useMemo(() => {
       }
       label={processingId ? "Aprobando solicitud de socio" : "Actualizando socios"}
     />
+    {identityDocs && (
+      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4" onClick={() => setIdentityDocs(null)}>
+        <section className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl" onClick={(event) => event.stopPropagation()}>
+          <div className="mb-5 flex items-center justify-between">
+            <div><h2 className="text-xl font-bold text-[#092f35]">Documentos de identidad</h2><p className="mt-1 text-sm text-gray-500">Nombre en CI: {identityDocs.identityFullName || "—"} · CI: {identityDocs.identityNumber || "—"}</p></div>
+            <button type="button" onClick={() => setIdentityDocs(null)} className="rounded-lg border border-gray-200 px-3 py-2 text-sm font-semibold">Cerrar</button>
+          </div>
+          <div className="grid gap-5 md:grid-cols-2">
+            <figure><figcaption className="mb-2 text-sm font-semibold text-gray-700">Frente</figcaption><a href={identityDocs.frontUrl} target="_blank" rel="noreferrer"><img src={identityDocs.frontUrl} alt="Frente de la cédula" className="max-h-[65vh] w-full rounded-xl border border-gray-200 object-contain" /></a></figure>
+            <figure><figcaption className="mb-2 text-sm font-semibold text-gray-700">Reverso</figcaption><a href={identityDocs.backUrl} target="_blank" rel="noreferrer"><img src={identityDocs.backUrl} alt="Reverso de la cédula" className="max-h-[65vh] w-full rounded-xl border border-gray-200 object-contain" /></a></figure>
+          </div>
+          <p className="mt-4 text-xs text-gray-400">Los enlaces de visualización vencen automáticamente en 5 minutos.</p>
+        </section>
+      </div>
+    )}
     <main className="min-h-screen bg-[#f8faf9]">
       <div className="mx-auto max-w-7xl px-6 py-8">
 
@@ -514,39 +490,6 @@ const filteredPending = useMemo(() => {
             Invitar socio
           </button>
         </div>
-
-        {gmailDraftUrl && (
-          <div className="mb-6 flex flex-col gap-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-5 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="font-semibold text-[#092f35]">
-                Aprobación confirmada por el servidor
-              </p>
-              <p className="mt-1 text-sm text-gray-600">
-                El socio ya está asociado al club. Podés abrir el borrador de bienvenida en Gmail.
-              </p>
-            </div>
-            <div className="flex shrink-0 items-center gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  window.open(gmailDraftUrl, "_blank", "noopener,noreferrer");
-                  setGmailDraftUrl(null);
-                }}
-                className="rounded-xl bg-[#006b58] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#005a4b]"
-              >
-                Abrir borrador en Gmail
-              </button>
-              <button
-                type="button"
-                aria-label="Cerrar aviso"
-                onClick={() => setGmailDraftUrl(null)}
-                className="flex h-10 w-10 items-center justify-center rounded-xl text-gray-500 transition hover:bg-white/70"
-              >
-                <X size={18} />
-              </button>
-            </div>
-          </div>
-        )}
 
         {/* MÉTRICAS */}
         <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -716,6 +659,8 @@ const filteredPending = useMemo(() => {
               onReject={(id) =>
                 updateRequest(id, "reject")
               }
+              onViewIdentity={viewIdentityDocuments}
+              identityDocsLoading={identityDocsLoading}
             />
           ) : (
             <RejectedRequests requests={filteredRejected} />
@@ -1217,11 +1162,15 @@ function PendingRequests({
   processingId,
   onApprove,
   onReject,
+  onViewIdentity,
+  identityDocsLoading,
 }: {
   requests: MembershipRequest[];
   processingId: string | null;
   onApprove: (id: string) => void;
   onReject: (id: string) => void;
+  onViewIdentity: (id: string) => void;
+  identityDocsLoading: string | null;
 }) {
   if (requests.length === 0) {
     return (
@@ -1268,6 +1217,14 @@ function PendingRequests({
               <p className="mt-1 text-xs text-gray-400">
                 Solicitud recibida el {formatDate(request.createdAt)}
               </p>
+              {request.hasIdentityDocuments && (
+                <div className="mt-3 flex flex-wrap items-center gap-3">
+                  <span className="text-sm font-semibold text-[#092f35]">CI: {request.identityNumber || "—"}{request.identityFullName ? ` · ${request.identityFullName}` : ""}</span>
+                  <button type="button" onClick={() => onViewIdentity(request.id)} disabled={identityDocsLoading === request.id} className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-800 disabled:opacity-50">
+                    {identityDocsLoading === request.id ? "Abriendo documentos..." : "Ver frente y reverso"}
+                  </button>
+                </div>
+              )}
             </div>
 
           </div>

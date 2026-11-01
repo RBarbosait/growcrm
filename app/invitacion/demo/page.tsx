@@ -18,6 +18,8 @@ const membershipMessages = [
   "Avisando a la administración...",
 ]
 
+const API_URL = "https://growcrm-api-production.up.railway.app"
+
 export default function InvitacionDemoPage() {
   const [showForm, setShowForm] = useState(false)
   const [submitted, setSubmitted] = useState(false)
@@ -25,6 +27,11 @@ export default function InvitacionDemoPage() {
   const [signedInAccount, setSignedInAccount] = useState<{ email: string; name: string } | null>(null)
   const [formError, setFormError] = useState("")
   const [needsLogin, setNeedsLogin] = useState(false)
+  const [clubInfo, setClubInfo] = useState<{ id: string; name: string; template: { slug: string } } | null>(null)
+  const [identityFullName, setIdentityFullName] = useState("")
+  const [identityNumber, setIdentityNumber] = useState("")
+  const [identityFront, setIdentityFront] = useState<File | null>(null)
+  const [identityBack, setIdentityBack] = useState<File | null>(null)
 
   const [form, setForm] = useState({
     nombre: "",
@@ -45,6 +52,22 @@ export default function InvitacionDemoPage() {
       [field]: value,
     }))
   }
+
+  useEffect(() => {
+    const clubId = new URLSearchParams(window.location.search).get("clubId")
+    if (!clubId) return
+    let active = true
+    void fetch(`${API_URL}/club/${encodeURIComponent(clubId)}/invitation-info`)
+      .then(async (response) => {
+        const data = await response.json()
+        if (!response.ok) throw new Error(data.error || "No se pudo cargar el club.")
+        if (active) setClubInfo(data)
+      })
+      .catch((error) => {
+        if (active) setFormError(error instanceof Error ? error.message : "No se pudo cargar el club.")
+      })
+    return () => { active = false }
+  }, [])
 
   useEffect(() => {
     let active = true
@@ -77,13 +100,19 @@ const handleSubmit = async (
 ) => {
   event.preventDefault()
 
+  const isCannabisClub = clubInfo?.template.slug === "cannabis"
+  const fullName = isCannabisClub ? form.nombre.trim() : `${form.nombre.trim()} ${form.apellido.trim()}`
   if (
-    !form.nombre ||
-    !form.apellido ||
-    !form.email ||
+    !fullName ||
+    (!isCannabisClub && !form.apellido.trim()) ||
+    !form.email.trim() ||
     (!signedInAccount && (!form.password || !form.confirmPassword))
   ) {
     alert("Completá todos los campos obligatorios.")
+    return
+  }
+  if (isCannabisClub && (!identityFullName.trim() || !/^\d{6,8}$/.test(identityNumber.replace(/[\s.\-]/g, "")) || !identityFront || !identityBack)) {
+    alert("Para este club, completá el nombre tal como figura en la CI, el número y las dos fotos.")
     return
   }
 
@@ -123,26 +152,46 @@ if (!signedInAccount && form.password.length < 6) {
       return
     }
 
-const API_URL =
-  "https://growcrm-api-production.up.railway.app"
+if (!clubInfo) throw new Error("No se pudo verificar el tipo de club. Recargá la invitación e intentá de nuevo.")
 
-const response = await fetch(
-  `${API_URL}/membership-request`,
-  {
-    method: "POST",
-      headers: {
-      "Content-Type": "application/json",
-      ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
-    },
-body: JSON.stringify({
-  clubId,
-  name: `${form.nombre.trim()} ${form.apellido.trim()}`,
-  email: session?.user.email || form.email.trim(),
-  phone: form.telefono.trim(),
-  ...(session ? {} : { password: form.password }),
-}),
-  }
-)
+    let identityPaths: { identityFrontPath?: string; identityBackPath?: string } = {}
+    if (isCannabisClub) {
+      const uploadIdentitySide = async (file: File, side: "front" | "back") => {
+        const signedResponse = await fetch(`${API_URL}/membership-request/document-upload`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ clubId, side, contentType: file.type }),
+        })
+        const signedData = await signedResponse.json()
+        if (!signedResponse.ok) throw new Error(signedData.error || "No se pudo preparar la carga segura de la CI.")
+        const { error } = await supabase.storage
+          .from("member-identity-documents")
+          .uploadToSignedUrl(signedData.path, signedData.token, file, { contentType: file.type, upsert: false })
+        if (error) throw new Error(`No se pudo subir la foto ${side === "front" ? "del frente" : "del reverso"} de la CI.`)
+        return signedData.path as string
+      }
+      const [frontPath, backPath] = await Promise.all([
+        uploadIdentitySide(identityFront!, "front"),
+        uploadIdentitySide(identityBack!, "back"),
+      ])
+      identityPaths = { identityFrontPath: frontPath, identityBackPath: backPath }
+    }
+
+const response = await fetch(`${API_URL}/membership-request`, {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+  },
+  body: JSON.stringify({
+    clubId,
+    name: fullName,
+    email: session?.user.email || form.email.trim(),
+    phone: form.telefono.trim(),
+    ...(isCannabisClub ? { identityFullName: identityFullName.trim(), identityNumber: identityNumber.replace(/[\s.\-]/g, ""), ...identityPaths } : {}),
+    ...(session ? {} : { password: form.password }),
+  }),
+})
 
     const raw = await response.text()
 
@@ -246,7 +295,7 @@ try {
 
             <div>
               <p className="text-sm font-bold text-[#092f35]">
-                Club demo
+                {clubInfo?.name || "Tu club"}
               </p>
 
               <p className="text-xs text-zinc-400">
@@ -412,28 +461,25 @@ try {
               <form onSubmit={handleSubmit} className="space-y-5">
 
                 <div className="grid gap-5 sm:grid-cols-2">
-
-                  <Field
-                    label="Nombre"
-                    placeholder="Tu nombre"
-                    value={form.nombre}
-                    onChange={(value) =>
-                      updateField("nombre", value)
-                    }
-                    required
-                  />
-
-                  <Field
-                    label="Apellido"
-                    placeholder="Tu apellido"
-                    value={form.apellido}
-                    onChange={(value) =>
-                      updateField("apellido", value)
-                    }
-                    required
-                  />
-
+                  <Field label="Nombre" placeholder="Tu nombre" value={form.nombre} onChange={(value) => updateField("nombre", value)} required />
+                  <Field label="Apellido" placeholder="Tu apellido" value={form.apellido} onChange={(value) => updateField("apellido", value)} required />
                 </div>
+
+                {clubInfo?.template.slug === "cannabis" && (
+                  <div className="space-y-4 rounded-2xl border border-emerald-100 bg-[#f5faf8] p-5">
+                    <div>
+                      <h2 className="text-sm font-bold text-[#092f35]">Verificación de identidad</h2>
+                      <p className="mt-1 text-xs leading-5 text-zinc-500">El club necesita estos datos para validar tu solicitud. Las fotos se guardan en privado y solo las puede abrir la administración del club.</p>
+                    </div>
+                    <Field label="Nombre completo (como figura en la CI)" placeholder="Nombre y apellido según la cédula" value={identityFullName} onChange={setIdentityFullName} required />
+                    <Field label="Cédula de identidad" placeholder="1.234.567-8" value={identityNumber} onChange={setIdentityNumber} required />
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <IdentityFileField label="Foto del frente de la CI" file={identityFront} onChange={setIdentityFront} />
+                      <IdentityFileField label="Foto del reverso de la CI" file={identityBack} onChange={setIdentityBack} />
+                    </div>
+                    <p className="text-xs text-zinc-500">JPG, PNG o WebP · máximo 5 MB por foto.</p>
+                  </div>
+                )}
 
                 <Field
                   label="Email"
@@ -511,15 +557,16 @@ try {
                   />
 
                   <span className="text-xs leading-5 text-zinc-600">
-                    Acepto formar parte del club y declaro que la información
-                    proporcionada es correcta.
+                    {clubInfo?.template.slug === "cannabis"
+                      ? "Acepto formar parte del club, confirmo que los datos son correctos y autorizo el uso privado de mi CI y sus fotos para verificar mi identidad y gestionar esta solicitud."
+                      : "Acepto formar parte del club y declaro que la información proporcionada es correcta."}
                   </span>
 
                 </label>
 
                 <button
                   type="submit"
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || !clubInfo}
                   className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#006b55] px-5 py-4 text-sm font-bold text-white shadow-sm transition hover:bg-[#005c49]"
                 >
                   {isSubmitting ? "Enviando solicitud..." : "Solicitar incorporación"}
@@ -561,6 +608,41 @@ function Benefit({ text }: { text: string }) {
         {text}
       </span>
     </div>
+  )
+}
+
+function IdentityFileField({
+  label,
+  file,
+  onChange,
+}: {
+  label: string
+  file: File | null
+  onChange: (file: File | null) => void
+}) {
+  return (
+    <label className="block cursor-pointer">
+      <span className="mb-2 block text-sm font-semibold text-zinc-700">{label}<span className="ml-1 text-[#007f63]">*</span></span>
+      <span className="flex min-h-12 items-center rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-600">
+        <span className="truncate">{file?.name || "Elegí una imagen"}</span>
+      </span>
+      <input
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        required
+        className="sr-only"
+        onChange={(event) => {
+          const selected = event.target.files?.[0] || null
+          if (selected && selected.size > 5 * 1024 * 1024) {
+            alert("Cada foto puede pesar hasta 5 MB.")
+            event.target.value = ""
+            onChange(null)
+            return
+          }
+          onChange(selected)
+        }}
+      />
+    </label>
   )
 }
 
