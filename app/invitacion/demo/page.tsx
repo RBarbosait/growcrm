@@ -86,6 +86,16 @@ export default function InvitacionDemoPage() {
     return () => { active = false }
   }, [])
 
+  async function changeAccount() {
+    const { error } = await supabase.auth.signOut()
+    if (error) {
+      setFormError("No se pudo cerrar la sesión actual. Intentá nuevamente.")
+      return
+    }
+    setSignedInAccount(null)
+    goToLogin()
+  }
+
   function goToLogin() {
     const params = new URLSearchParams(window.location.search)
     const clubId = params.get("clubId")
@@ -366,6 +376,7 @@ try {
                     <div className="mt-5 rounded-xl bg-[#f5faf8] p-4 text-sm text-[#36544f]">
                       Cuenta: <strong className="break-all text-[#092f35]">{signedInAccount.email}</strong>
                     </div>
+                    <button type="button" onClick={changeAccount} className="mt-3 self-start text-sm font-semibold text-[#007f63] underline underline-offset-4 hover:text-[#005c49]">¿No es tu cuenta? Usar otra cuenta</button>
                     <button
                       type="button"
                       onClick={() => setShowForm(true)}

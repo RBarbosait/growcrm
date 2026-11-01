@@ -73,6 +73,7 @@ const result = await supabase.auth.signInWithOAuth({
   provider: "google",
   options: {
   redirectTo: `${window.location.origin}${loginReturn}`,
+  queryParams: { prompt: "select_account" },
     skipBrowserRedirect: true,
   },
 })

@@ -1,6 +1,10 @@
 "use client";
 import { useEffect, useState } from "react";
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://growcrm-api-production.up.railway.app";
+
+const PUBLIC_APP_URL = "https://growcrm-club.pages.dev";
+
 import {
   ArrowLeft,
   Check,
@@ -13,11 +17,11 @@ import {
 
 export default function InvitacionesPage() {
   const [title, setTitle] = useState(
-    "Te invitamos a ser parte del club"
+    "¡Nos encantaría que te sumes al club!"
   );
 
   const [description, setDescription] = useState(
-    "Completá tu registro para formar parte de nuestra comunidad y acceder a todos los beneficios del club."
+    "Queremos invitarte a formar parte de nuestra comunidad. Completá tu solicitud de ingreso y la administración del club la revisará. Te avisaremos cuando esté aprobada."
   );
 
   const [buttonText, setButtonText] = useState(
@@ -25,6 +29,8 @@ export default function InvitacionesPage() {
   );
 
   const [copied, setCopied] = useState(false);
+  const [clubName, setClubName] = useState("");
+  const [clubDescription, setClubDescription] = useState("");
   
   const [recipients, setRecipients] = useState("");
   const [shareError, setShareError] = useState("");
@@ -48,13 +54,26 @@ useEffect(() => {
     "growcrm_active_club_id"
   );
 
-  if (storedClubId) {
-    setClubId(storedClubId);
+  if (!storedClubId) return;
+
+  setClubId(storedClubId);
+
+  async function loadClubDetails() {
+    const response = await fetch(`${API_URL}/club/${storedClubId}/invitation-info`);
+    if (!response.ok) return;
+
+    const club = await response.json() as { id: string; name: string; description?: string | null; template?: { name?: string; slug?: string } };
+    setClubName(club.name);
+    setClubDescription(club.description?.trim() || "");
+    setTitle(`¡${club.name} te invita a sumarte!`);
+    setDescription(`Desde ${club.name} queremos invitarte a formar parte de nuestra comunidad. Nos encantará recibir tu solicitud.`);
   }
+
+  void loadClubDetails().catch((error) => console.warn("No se pudieron cargar los datos del club para la invitación:", error));
 }, []);
 
 const invitationUrl = clubId
-  ? `${window.location.origin}/invitacion/demo?clubId=${encodeURIComponent(clubId)}`
+  ? `${PUBLIC_APP_URL}/invitacion/demo?clubId=${encodeURIComponent(clubId)}`
   : "";
 
   const handleCopy = async () => {
@@ -88,19 +107,31 @@ const invitationUrl = clubId
       return;
     }
 
-    const subject =
-      title || "Te invitamos a ser parte del club";
+    const name = clubName || "el club";
+    const subject = title || `¡${name} te invita a sumarte!`;
+    const recipientField = validRecipients.length === 1
+      ? `&to=${encodeURIComponent(validRecipients[0])}`
+      : `&bcc=${encodeURIComponent(validRecipients.join(","))}`;
 
-    const body = `${description}
+    const body = `Hola,
 
-${buttonText || "Unirme al club"}:
+${description}
+${clubDescription ? `\nUn poco sobre ${name}:\n${clubDescription}\n` : ""}
+Tu invitación a ${name}:
+
+Para empezar, completá tu solicitud desde este enlace:
 ${invitationUrl}
 
-Te esperamos para formar parte del club.`;
+El equipo de ${name} revisará tu solicitud y te avisará cuando tu ingreso quede aprobado.
+
+Si tenés alguna pregunta, respondé a este correo.
+
+¡Nos encantará recibirte!
+${name}`;
 
     const gmailUrl =
       `https://mail.google.com/mail/?view=cm&fs=1` +
-      `&bcc=${encodeURIComponent(validRecipients.join(","))}` +
+      recipientField +
       `&su=${encodeURIComponent(subject)}` +
       `&body=${encodeURIComponent(body)}`;
 
@@ -116,7 +147,7 @@ Te esperamos para formar parte del club.`;
 
   const handleOpenWhatsApp = () => {
     if (!invitationUrl) return;
-    const message = `Te invito a sumarte al club. Completá tu solicitud desde este enlace: ${invitationUrl}`;
+    const message = `¡Hola! 👋 Desde ${clubName || "nuestro club"} queremos invitarte a sumarte a nuestra comunidad. Completá tu solicitud acá: ${invitationUrl}`;
     window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, "_blank", "noopener,noreferrer");
   };
 
@@ -266,7 +297,7 @@ Te esperamos para formar parte del club.`;
                 <div className="mb-5 flex items-center gap-2">
                   <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#006b55] text-white"><Sparkles size={17} /></span>
                   <span className="inline-flex rounded-full bg-[#e6f5f0] px-3 py-1 text-xs font-bold uppercase tracking-wide text-[#007f63]">
-                    Invitación privada
+                    {clubName ? `Una invitación de ${clubName}` : "Invitación del club"}
                   </span>
                 </div>
 
@@ -274,16 +305,23 @@ Te esperamos para formar parte del club.`;
                   {title || "Título de la invitación"}
                 </h3>
 
-                <p className="mt-4 whitespace-pre-line text-sm leading-6 text-gray-600">
+                <p className="mt-5 text-sm font-semibold text-[#092f35]">Hola,</p>
+                <p className="mt-2 whitespace-pre-line text-sm leading-6 text-gray-600">
                   {description || "Texto de la invitación..."}
                 </p>
 
-                <button
-                  type="button"
-                  className="mt-7 w-full rounded-xl bg-[#006b55] px-5 py-3.5 text-sm font-bold text-white shadow-sm"
-                >
-                  {buttonText || "Unirme al club"}
-                </button>
+                {clubDescription && (
+                  <div className="mt-5 rounded-2xl border border-emerald-100 bg-white/80 p-4">
+                    <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#007f63]">Un poco sobre el club</p>
+                    <p className="mt-2 whitespace-pre-line text-sm leading-6 text-gray-600">{clubDescription}</p>
+                  </div>
+                )}
+
+                <div className="mt-6 rounded-2xl border border-emerald-100 bg-white/80 p-4">
+                  <p className="text-xs leading-5 text-gray-500">La administración del club revisará tu solicitud y te avisará cuando quede aprobada.</p>
+                  <p className="mt-3 text-sm font-bold text-[#006b55]">{buttonText || "Unirme al club"} →</p>
+                </div>
+                <p className="mt-5 text-sm leading-6 text-gray-600">¡Ojalá te sumes!<br />Con cariño,<br /><strong>{clubName || "El equipo del club"}</strong></p>
 
               </div>
 
@@ -305,7 +343,7 @@ Te esperamos para formar parte del club.`;
     <div className="mb-4">
 
       <label className="mb-2 block text-sm font-semibold text-gray-700">
-        Destinatarios <span className="font-normal text-gray-400">(en copia oculta)</span>
+        Destinatarios <span className="font-normal text-gray-400">{validRecipients.length === 1 ? "(un destinatario)" : "(en copia oculta si son varios)"}</span>
       </label>
 
       <textarea
@@ -396,7 +434,7 @@ pedro@gmail.com`}
                 />
 
                 <p className="text-xs leading-5 text-[#27665a]">
-                  Gmail se abrirá en otra pestaña con los destinatarios en copia oculta. Revisá el mensaje y pulsá Enviar; el correo no se manda automáticamente.
+                  El correo se abre desde tu Gmail con el enlace público de GrowCRM. Si invitás a varias personas, sus direcciones quedan en copia oculta. Revisá el borrador y pulsá Enviar.
                 </p>
 
               </div>

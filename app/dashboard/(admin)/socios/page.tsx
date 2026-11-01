@@ -100,6 +100,8 @@ const [editName, setEditName] = useState("");
 const [editEmail, setEditEmail] = useState("");
 const [editPhone, setEditPhone] = useState("");
 const [savingMember, setSavingMember] = useState(false);
+const [identityDocs, setIdentityDocs] = useState<{ identityFullName: string | null; identityNumber: string | null; frontUrl: string; backUrl: string } | null>(null);
+const [identityDocsLoading, setIdentityDocsLoading] = useState<string | null>(null);
 
   /*
    * Por ahora usamos el club guardado por el dashboard.
