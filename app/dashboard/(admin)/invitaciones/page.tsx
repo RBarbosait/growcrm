@@ -6,6 +6,9 @@ import {
   Check,
   Copy,
   Mail,
+  MessageCircle,
+  Sparkles,
+  Users,
 } from "lucide-react";
 
 export default function InvitacionesPage() {
@@ -24,6 +27,19 @@ export default function InvitacionesPage() {
   const [copied, setCopied] = useState(false);
   
   const [recipients, setRecipients] = useState("");
+  const [shareError, setShareError] = useState("");
+
+  const parsedRecipients = recipients
+    .split(/[,;\n]+/)
+    .map((email) => email.trim())
+    .filter(Boolean);
+  const recipientEmails = Array.from(new Set(parsedRecipients.map((email) => email.toLowerCase())));
+  const invalidRecipients = recipientEmails.filter(
+    (email) => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+  );
+  const validRecipients = recipientEmails.filter(
+    (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+  );
 
 const [clubId, setClubId] = useState<string | null>(null);
 
@@ -42,9 +58,10 @@ const invitationUrl = clubId
   : "";
 
   const handleCopy = async () => {
+    if (!invitationUrl) return;
     try {
       await navigator.clipboard.writeText(invitationUrl);
-
+      setShareError("");
       setCopied(true);
 
       setTimeout(() => {
@@ -58,13 +75,16 @@ const invitationUrl = clubId
 
 
   const handleOpenGmail = () => {
-    const emailList = recipients
-      .split(/[,;\n]+/)
-      .map((email) => email.trim())
-      .filter(Boolean);
-
-    if (emailList.length === 0) {
-      alert("Ingresá al menos un destinatario.");
+    if (validRecipients.length === 0) {
+      setShareError("Ingresá al menos un correo válido para continuar.");
+      return;
+    }
+    if (invalidRecipients.length > 0) {
+      setShareError(`Revisá estos correos: ${invalidRecipients.join(", ")}`);
+      return;
+    }
+    if (!invitationUrl) {
+      setShareError("No encontramos un club activo para generar la invitación.");
       return;
     }
 
@@ -80,13 +100,24 @@ Te esperamos para formar parte del club.`;
 
     const gmailUrl =
       `https://mail.google.com/mail/?view=cm&fs=1` +
-      `&to=${encodeURIComponent(emailList.join(","))}` +
+      `&bcc=${encodeURIComponent(validRecipients.join(","))}` +
       `&su=${encodeURIComponent(subject)}` +
       `&body=${encodeURIComponent(body)}`;
 
-    window.open(gmailUrl, "_blank");
+    const gmailWindow = window.open(gmailUrl, "_blank");
+    if (!gmailWindow) {
+      setShareError("El navegador bloqueó la ventana de Gmail. Permití ventanas emergentes para continuar.");
+      return;
+    }
 
+    setShareError("");
     setRecipients("");
+  };
+
+  const handleOpenWhatsApp = () => {
+    if (!invitationUrl) return;
+    const message = `Te invito a sumarte al club. Completá tu solicitud desde este enlace: ${invitationUrl}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, "_blank", "noopener,noreferrer");
   };
 
   return (
@@ -113,8 +144,11 @@ Te esperamos para formar parte del club.`;
             </h1>
 
             <p className="mt-1 text-sm text-gray-500">
-              Prepará la invitación que recibirán las personas que quieras sumar al club.
+              Prepará el mensaje, revisá cómo se verá y elegí cómo compartirlo.
             </p>
+          </div>
+          <div className="hidden items-center gap-2 rounded-full border border-emerald-100 bg-white px-4 py-2 text-xs font-semibold text-emerald-800 shadow-sm sm:flex">
+            <Sparkles size={15} /> Invitación del club
           </div>
         </div>
 
@@ -125,11 +159,11 @@ Te esperamos para formar parte del club.`;
 
             <div className="mb-7">
               <h2 className="text-lg font-bold text-[#092f35]">
-                Diseñá tu invitación
+                1. Personalizá el mensaje
               </h2>
 
               <p className="mt-1 text-sm text-gray-500">
-                Personalizá el contenido que se utilizará para invitar a nuevos socios.
+                Estos textos se usan en el correo que prepares desde Gmail.
               </p>
             </div>
 
@@ -194,7 +228,8 @@ Te esperamos para formar parte del club.`;
                   <button
                     type="button"
                     onClick={handleCopy}
-                    className="flex shrink-0 items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
+                    disabled={!invitationUrl}
+                    className="flex shrink-0 items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {copied ? (
                       <>
@@ -218,22 +253,21 @@ Te esperamos para formar parte del club.`;
           <section>
 
             <div className="mb-3">
-              <h2 className="text-lg font-bold text-[#092f35]">
-                Vista previa
-              </h2>
-
-              <p className="text-sm text-gray-500">
-                Así verá la invitación la persona invitada.
-              </p>
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#007f63]">Paso 2</p>
+              <h2 className="mt-1 text-lg font-bold text-[#092f35]">Vista previa</h2>
+              <p className="text-sm text-gray-500">Así quedará el correo antes de abrirlo en Gmail.</p>
             </div>
 
-            <div className="overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-sm">
+            <div className="overflow-hidden rounded-3xl border border-emerald-100 bg-white shadow-sm">
 
               {/* CONTENT */}
-              <div className="p-7">
+              <div className="bg-gradient-to-br from-[#f1faf6] via-white to-[#fffdf8] p-7">
 
-                <div className="mb-4 inline-flex rounded-full bg-[#e6f5f0] px-3 py-1 text-xs font-bold uppercase tracking-wide text-[#007f63]">
-                  Invitación
+                <div className="mb-5 flex items-center gap-2">
+                  <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#006b55] text-white"><Sparkles size={17} /></span>
+                  <span className="inline-flex rounded-full bg-[#e6f5f0] px-3 py-1 text-xs font-bold uppercase tracking-wide text-[#007f63]">
+                    Invitación privada
+                  </span>
                 </div>
 
                 <h3 className="text-2xl font-bold leading-tight text-[#092f35]">
@@ -255,28 +289,28 @@ Te esperamos para formar parte del club.`;
 
             </div>
 
-{/* EMAIL */}
+{/* COMPARTIR */}
 <div className="mt-6 rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
-
-  <h3 className="text-sm font-bold text-[#092f35]">
-    Compartir invitación
-  </h3>
-
-  <p className="mt-1 text-xs leading-5 text-gray-500">
-    Prepará el correo desde Gmail o copiá el enlace para compartirlo por WhatsApp u otro medio.
-  </p>
+  <div className="flex items-start justify-between gap-3">
+    <div>
+      <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#007f63]">Paso 3</p>
+      <h3 className="mt-1 text-base font-bold text-[#092f35]">Compartí la invitación</h3>
+    </div>
+    <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#f0f8f5] text-[#007f63]"><Users size={17} /></span>
+  </div>
+  <p className="mt-2 text-xs leading-5 text-gray-500">Prepará el correo desde Gmail o compartí el enlace por WhatsApp.</p>
 
   <div className="mt-5">
 
     <div className="mb-4">
 
       <label className="mb-2 block text-sm font-semibold text-gray-700">
-        Destinatarios
+        Destinatarios <span className="font-normal text-gray-400">(en copia oculta)</span>
       </label>
 
       <textarea
         value={recipients}
-        onChange={(e) => setRecipients(e.target.value)}
+        onChange={(e) => { setRecipients(e.target.value); setShareError(""); }}
         rows={4}
         placeholder={`Ej.
 juan@gmail.com
@@ -284,9 +318,15 @@ pedro@gmail.com`}
         className="w-full resize-none rounded-xl border border-gray-200 px-4 py-3 text-sm leading-6 text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-[#007f63] focus:ring-2 focus:ring-[#007f63]/10"
       />
 
-      <p className="mt-2 text-xs text-gray-400">
-        Podés ingresar varios correos separados por coma, punto y coma o salto de línea.
-      </p>
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs">
+        <p className="text-gray-400">Separá varios correos con coma, punto y coma o salto de línea.</p>
+        <p className={`font-semibold ${invalidRecipients.length ? "text-red-600" : "text-gray-500"}`}>
+          {parsedRecipients.length === 0 ? "Sin destinatarios" : `${validRecipients.length} ${validRecipients.length === 1 ? "destinatario válido" : "destinatarios válidos"}`}
+          {invalidRecipients.length > 0 ? ` · ${invalidRecipients.length} inválido${invalidRecipients.length > 1 ? "s" : ""}` : ""}
+        </p>
+      </div>
+      {invalidRecipients.length > 0 && <p className="mt-2 text-xs leading-5 text-red-600">Revisá: {invalidRecipients.join(", ")}</p>}
+      {shareError && <p role="alert" className="mt-3 rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-xs leading-5 text-red-700">{shareError}</p>}
 
     </div>
 
@@ -294,7 +334,7 @@ pedro@gmail.com`}
 
       <button
         type="button"
-        onClick={() => setRecipients("")}
+        onClick={() => { setRecipients(""); setShareError(""); }}
         className="flex-1 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-600 transition hover:bg-gray-50"
       >
         Cancelar
@@ -303,7 +343,7 @@ pedro@gmail.com`}
       <button
         type="button"
         onClick={handleOpenGmail}
-        disabled={!recipients.trim()}
+        disabled={!validRecipients.length || invalidRecipients.length > 0 || !invitationUrl}
         className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-[#006b55] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#005c49] disabled:cursor-not-allowed disabled:opacity-40"
       >
         <Mail size={18} />
@@ -314,8 +354,19 @@ pedro@gmail.com`}
 
     <button
       type="button"
+      onClick={handleOpenWhatsApp}
+      disabled={!invitationUrl}
+      className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-900 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50"
+    >
+      <MessageCircle size={17} />
+      Compartir por WhatsApp
+    </button>
+
+    <button
+      type="button"
       onClick={handleCopy}
-      className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
+      disabled={!invitationUrl}
+      className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
     >
       {copied ? (
         <>
@@ -345,7 +396,7 @@ pedro@gmail.com`}
                 />
 
                 <p className="text-xs leading-5 text-[#27665a]">
-                  Gmail se abrirá con los destinatarios, asunto, mensaje y enlace ya preparados. Solo tenés que revisar el correo y enviarlo.
+                  Gmail se abrirá en otra pestaña con los destinatarios en copia oculta. Revisá el mensaje y pulsá Enviar; el correo no se manda automáticamente.
                 </p>
 
               </div>
