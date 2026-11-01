@@ -361,6 +361,14 @@ export default function MemberDashboardPage() {
         </div>
       </header>
 
+      <nav aria-label="Secciones del espacio de socio" className="sticky top-[72px] z-20 border-b border-emerald-950/5 bg-[#f8f6f1]/95 px-4 py-2 backdrop-blur-xl md:hidden">
+        <div className="mx-auto flex max-w-7xl gap-2 overflow-x-auto [scrollbar-width:thin]">
+          {[["inicio", "Inicio"], ["muro", "Novedades"], ["catalogo", "Catálogo"], ["mis-reservas", "Reservas"], ["beneficios", "Beneficios"], ["membresia", "Membresía"]].map(([href, label]) => (
+            <a key={href} href={`#${href}`} className="shrink-0 rounded-full border border-emerald-900/10 bg-white px-3.5 py-2 text-xs font-semibold text-[#31544a] shadow-sm transition active:bg-emerald-50">{label}</a>
+          ))}
+        </div>
+      </nav>
+
       <div className="mx-auto max-w-7xl px-5 pb-16 pt-7 sm:px-8 sm:pt-10">
         <section id="inicio" className="relative isolate mt-2 min-h-[300px] overflow-hidden rounded-[30px] bg-[#eee5d7] shadow-[0_18px_45px_-30px_rgba(26,45,35,.5)] sm:min-h-[320px]">
           <img src="/member-clubs-mural.png" alt="" aria-hidden="true" className="absolute inset-0 h-full w-full object-cover object-center" />
@@ -387,7 +395,7 @@ export default function MemberDashboardPage() {
           </div>
         </section>
 
-        <section id="membresia" className="scroll-mt-24 mt-4 grid gap-3 rounded-2xl border border-[#e9e3d8] bg-white px-5 py-4 shadow-sm sm:grid-cols-[1fr_1.5fr_auto] sm:items-center sm:px-7">
+        <section id="membresia" className="scroll-mt-32 mt-4 grid gap-3 rounded-2xl border border-[#e9e3d8] bg-white px-5 py-4 shadow-sm sm:grid-cols-[1fr_1.5fr_auto] sm:items-center sm:px-7">
           <div className="flex items-center gap-3">
             <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#e9f2ec] text-[#26765f]"><BadgeCheck className="h-5 w-5" /></span>
             <div>
@@ -405,7 +413,7 @@ export default function MemberDashboardPage() {
 
         <ClubWall clubId={activeClubId} clubName={data.club.name} role="MEMBER" />
 
-        <section id="catalogo" className="scroll-mt-24 pt-12">
+        <section id="catalogo" className="scroll-mt-32 pt-12">
           <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
             <div>
               <p className="text-sm font-semibold text-emerald-700">Descubrí lo que hay para vos</p>
@@ -484,7 +492,7 @@ export default function MemberDashboardPage() {
           )}
         </section>
 
-        <section id="mis-reservas" className="scroll-mt-24 pt-12">
+        <section id="mis-reservas" className="scroll-mt-32 pt-12">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
               <p className="text-sm font-semibold text-emerald-700">Seguimiento</p>
@@ -518,7 +526,7 @@ export default function MemberDashboardPage() {
           )}
         </section>
 
-        <section id="beneficios" className="scroll-mt-24 pt-14">
+        <section id="beneficios" className="scroll-mt-32 pt-14">
           <div className="overflow-hidden rounded-[30px] bg-[#eeeae1] p-7 sm:p-10">
             <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
               <div>
@@ -665,18 +673,18 @@ function MemberProductModal({
   }, [onClose])
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6" role="dialog" aria-modal="true" aria-label={`Detalle de ${product.name}`}>
+    <div className="fixed inset-0 z-[100] flex items-end justify-center p-0 sm:items-center sm:p-6" role="dialog" aria-modal="true" aria-label={`Detalle de ${product.name}`}>
       <button type="button" aria-label="Cerrar detalle" onClick={onClose} className="absolute inset-0 bg-[#062f2a]/55 backdrop-blur-sm" />
-      <section className="relative z-10 flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-[30px] bg-white shadow-2xl shadow-emerald-950/30">
-        <div className="relative h-52 shrink-0 overflow-hidden bg-gradient-to-br from-emerald-100 via-teal-50 to-emerald-200 sm:h-64">
+      <section className="relative z-10 flex h-[100dvh] max-h-[100dvh] w-full max-w-3xl flex-col overflow-hidden rounded-t-[26px] bg-white shadow-2xl shadow-emerald-950/30 sm:h-auto sm:max-h-[92vh] sm:rounded-[30px]">
+        <button type="button" aria-label="Cerrar" onClick={onClose} className="absolute right-4 top-4 z-20 flex h-10 w-10 items-center justify-center rounded-full bg-white/95 text-zinc-700 shadow-sm transition hover:bg-white"><X className="h-5 w-5" /></button>
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain [scrollbar-width:thin]" style={{ WebkitOverflowScrolling: "touch" }}>
+        <div className="relative h-48 shrink-0 overflow-hidden bg-gradient-to-br from-emerald-100 via-teal-50 to-emerald-200 sm:h-64">
           {product.imageUrl ? <img src={product.imageUrl} alt={product.name} className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center text-emerald-700/60"><Package className="h-16 w-16" /></div>}
           <div className="absolute inset-0 bg-gradient-to-t from-[#062f2a]/65 via-transparent to-black/10" />
           {product.category && <span className="absolute bottom-5 left-6 rounded-full border border-white/30 bg-white/90 px-3.5 py-1.5 text-xs font-bold uppercase tracking-wide text-emerald-900 shadow-sm">{product.category}</span>}
-          <button type="button" aria-label="Cerrar" onClick={onClose} className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/90 text-zinc-700 shadow-sm transition hover:bg-white"><X className="h-5 w-5" /></button>
+          <span className="absolute bottom-4 right-5 rounded-full bg-black/35 px-3 py-1 text-[11px] font-semibold text-white sm:hidden">Deslizá para ver más ↓</span>
         </div>
-
-        <div className="min-h-0 flex-1 overflow-y-auto">
-          <div className="p-6 sm:p-8">
+          <div className="p-5 pb-7 sm:p-8">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 {product.brand && <p className="text-xs font-bold uppercase tracking-[0.16em] text-emerald-700">{product.brand}</p>}
@@ -729,7 +737,7 @@ function MemberProductModal({
           </div>
         </div>
 
-        <div className="shrink-0 border-t border-zinc-100 bg-white px-6 py-4 sm:px-8">
+        <div className="shrink-0 border-t border-zinc-100 bg-white px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 sm:px-8 sm:py-4">
           {notice && <div role="status" className="mb-3 rounded-xl bg-emerald-50 px-4 py-3 text-center text-sm font-medium text-emerald-800"><p>{notice}</p>{confirmation && <div className="mt-3 flex flex-col items-center gap-2"><ReservationQR reservationId={confirmation.id} size={144} /><span className="text-xs text-emerald-900">Presentá este código al club</span></div>}</div>}
           {!confirmation && <>
             <button type="button" onClick={() => onReserve(quantity)} disabled={maxPackages === 0 || submitting} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#006b55] px-5 py-3.5 text-sm font-bold text-white shadow-lg shadow-emerald-900/10 transition hover:bg-[#005742] disabled:cursor-not-allowed disabled:bg-zinc-300 disabled:shadow-none">

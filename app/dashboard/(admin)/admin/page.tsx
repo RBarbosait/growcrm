@@ -77,6 +77,9 @@ const [showClubSelector, setShowClubSelector] = useState(false)
 const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
 const [products, setProducts] = useState<Product[]>([])
+  const [pendingRequests, setPendingRequests] = useState(0)
+  const [pendingReservations, setPendingReservations] = useState(0)
+  const [attentionLoading, setAttentionLoading] = useState(true)
   const [search, setSearch] = useState("")
 
   const [loading, setLoading] = useState(true)
@@ -93,6 +96,45 @@ const [saving, setSaving] = useState(false)
   useEffect(() => {
     loadCatalog()
   }, [])
+
+  useEffect(() => {
+    if (!activeClub) return
+
+    let cancelled = false
+    const refreshAttention = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!session) return
+        const headers = { Authorization: `Bearer ${session.access_token}` }
+        const [requestsResponse, reservationsResponse] = await Promise.all([
+          fetch(`${API_URL}/club/${activeClub.id}/membership-requests`, { headers }),
+          fetch(`${API_URL}/club/${activeClub.id}/reservations`, { headers }),
+        ])
+        const [requestsData, reservationsData] = await Promise.all([
+          requestsResponse.ok ? requestsResponse.json() : [],
+          reservationsResponse.ok ? reservationsResponse.json() : [],
+        ])
+        if (cancelled) return
+        const requests = Array.isArray(requestsData) ? requestsData : []
+        const reservations = Array.isArray(reservationsData) ? reservationsData : []
+        setPendingRequests(requests.filter((item: { status?: string }) => item.status?.toLowerCase() === "pending").length)
+        setPendingReservations(reservations.filter((item: { status?: string }) => item.status?.toLowerCase() === "pending").length)
+      } catch (attentionError) {
+        console.warn("No se pudieron actualizar los avisos del dashboard:", attentionError)
+      } finally {
+        if (!cancelled) setAttentionLoading(false)
+      }
+    }
+
+    void refreshAttention()
+    const interval = window.setInterval(refreshAttention, 30000)
+    window.addEventListener("focus", refreshAttention)
+    return () => {
+      cancelled = true
+      window.clearInterval(interval)
+      window.removeEventListener("focus", refreshAttention)
+    }
+  }, [activeClub])
 
   async function loadCatalog() {
     try {
@@ -485,6 +527,7 @@ const [saving, setSaving] = useState(false)
   <DashboardNavItem
     icon={Users}
     label="Socios"
+    badge={pendingRequests}
     onClick={() =>
       (window.location.href = "/dashboard/socios")
     }
@@ -519,6 +562,7 @@ const [saving, setSaving] = useState(false)
   <DashboardNavItem
     icon={CalendarDays}
     label="Reservas"
+    badge={pendingReservations}
     onClick={() => (window.location.href = "/dashboard/reservas")}
   />
 
@@ -655,6 +699,7 @@ const [saving, setSaving] = useState(false)
   <DashboardNavItem
     icon={Users}
     label="Socios"
+    badge={pendingRequests}
     onClick={() => {
       setMobileMenuOpen(false)
       window.location.href = "/dashboard/socios"
@@ -700,6 +745,7 @@ const [saving, setSaving] = useState(false)
   <DashboardNavItem
     icon={CalendarDays}
     label="Reservas"
+    badge={pendingReservations}
     onClick={() => {
       setMobileMenuOpen(false)
       window.location.href = "/dashboard/reservas"
@@ -870,6 +916,34 @@ const [saving, setSaving] = useState(false)
               </Link>
 
             </div>
+
+            {attentionLoading ? (
+              <section aria-live="polite" aria-label="Cargando novedades" className="flex items-center gap-3 rounded-2xl border border-zinc-200 bg-white px-5 py-4 text-sm text-zinc-600 shadow-sm">
+                <span className="h-5 w-5 animate-spin rounded-full border-2 border-emerald-700/20 border-t-emerald-700" />
+                <span>Buscando novedades del club…</span>
+              </section>
+            ) : (pendingRequests > 0 || pendingReservations > 0) && (
+              <section aria-label="Novedades que requieren atención" className="grid gap-3 sm:grid-cols-2">
+                {pendingRequests > 0 && (
+                  <Link href="/dashboard/socios" className="group flex items-center justify-between gap-4 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 transition hover:border-amber-300 hover:bg-amber-100/70">
+                    <span className="flex items-center gap-3">
+                      <span className="relative flex h-11 w-11 items-center justify-center rounded-xl bg-white text-amber-700 shadow-sm"><Users className="h-5 w-5" /><span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1 text-[11px] font-bold text-white">{pendingRequests}</span></span>
+                      <span><span className="block text-sm font-bold text-amber-950">Solicitudes de socios</span><span className="mt-0.5 block text-xs text-amber-800">{pendingRequests} {pendingRequests === 1 ? "solicitud nueva" : "solicitudes nuevas"} para revisar</span></span>
+                    </span>
+                    <span className="flex items-center gap-1 text-sm font-bold text-amber-800">Ver <ChevronRight className="h-4 w-4 transition group-hover:translate-x-0.5" /></span>
+                  </Link>
+                )}
+                {pendingReservations > 0 && (
+                  <Link href="/dashboard/reservas" className="group flex items-center justify-between gap-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4 transition hover:border-emerald-300 hover:bg-emerald-100/70">
+                    <span className="flex items-center gap-3">
+                      <span className="relative flex h-11 w-11 items-center justify-center rounded-xl bg-white text-emerald-800 shadow-sm"><CalendarDays className="h-5 w-5" /><span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1 text-[11px] font-bold text-white">{pendingReservations}</span></span>
+                      <span><span className="block text-sm font-bold text-emerald-950">Reservas pendientes</span><span className="mt-0.5 block text-xs text-emerald-800">{pendingReservations} {pendingReservations === 1 ? "pedido nuevo" : "pedidos nuevos"} para gestionar</span></span>
+                    </span>
+                    <span className="flex items-center gap-1 text-sm font-bold text-emerald-800">Ver <ChevronRight className="h-4 w-4 transition group-hover:translate-x-0.5" /></span>
+                  </Link>
+                )}
+              </section>
+            )}
 
             {/* SEARCH */}
 
@@ -2228,12 +2302,14 @@ function DashboardNavItem({
   active = false,
   onClick,
   disabled = false,
+  badge = 0,
 }: {
   icon: any
   label: string
   active?: boolean
   onClick?: () => void
   disabled?: boolean
+  badge?: number
 }) {
   return (
     <button
@@ -2253,7 +2329,8 @@ function DashboardNavItem({
         strokeWidth={1.8}
       />
 
-      {label}
+      <span className="flex-1 text-left">{label}</span>
+      {badge > 0 && <span className={`flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[11px] font-bold ${active ? "bg-white text-emerald-900" : "bg-red-600 text-white"}`}>{badge > 99 ? "99+" : badge}</span>}
     </button>
   )
 }
