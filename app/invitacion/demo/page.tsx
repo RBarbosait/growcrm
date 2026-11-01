@@ -32,6 +32,7 @@ export default function InvitacionDemoPage() {
   const [identityNumber, setIdentityNumber] = useState("")
   const [identityFront, setIdentityFront] = useState<File | null>(null)
   const [identityBack, setIdentityBack] = useState<File | null>(null)
+  const [identityOcrStatus, setIdentityOcrStatus] = useState("")
 
   const [form, setForm] = useState({
     nombre: "",
@@ -42,6 +43,43 @@ export default function InvitacionDemoPage() {
     confirmPassword: "",
     accept: false,
   })
+
+  async function readIdentityFromFront(file: File) {
+    setIdentityOcrStatus("Leyendo los datos de la cédula…")
+    try {
+      const { createWorker } = await import("tesseract.js")
+      const worker = await createWorker(["spa", "eng"])
+      let text = ""
+      try {
+        const result = await worker.recognize(file)
+        text = result.data.text.toUpperCase()
+      } finally {
+        await worker.terminate()
+      }
+
+      const digits = (text.match(/\b\d[\d .-]{5,12}\d\b/g) || [])
+        .map((candidate) => candidate.replace(/\D/g, ""))
+        .find((candidate) => candidate.length >= 6 && candidate.length <= 8)
+      const lines = text.split(/\r?\n/).map((line) => line.replace(/[^A-ZÁÉÍÓÚÜÑ ]/g, " ").replace(/\s+/g, " ").trim()).filter(Boolean)
+      const readLabel = (label: "NOMBRES" | "APELLIDOS") => {
+        const index = lines.findIndex((line) => line.includes(label))
+        if (index < 0) return ""
+        const inline = lines[index].replace(label, "").trim()
+        if (inline.length > 1) return inline
+        return lines[index + 1] || ""
+      }
+      const givenNames = readLabel("NOMBRES")
+      const familyNames = readLabel("APELLIDOS")
+      const fullName = [givenNames, familyNames].filter(Boolean).join(" ").trim()
+
+      if (digits && !identityNumber) setIdentityNumber(digits)
+      if (fullName && !identityFullName) setIdentityFullName(fullName)
+      setIdentityOcrStatus(digits || fullName ? "Detectamos datos. Revisalos y corregí lo que haga falta." : "No pudimos leer los datos automáticamente. Completalos manualmente.")
+    } catch (error) {
+      console.warn("IDENTITY OCR ERROR:", error)
+      setIdentityOcrStatus("No pudimos leer los datos automáticamente. Completalos manualmente.")
+    }
+  }
 
   const updateField = (
     field: keyof typeof form,
@@ -166,11 +204,12 @@ if (!clubInfo) throw new Error("No se pudo verificar el tipo de club. Recargá l
 
     let identityPaths: { identityFrontPath?: string; identityBackPath?: string } = {}
     if (isCannabisClub) {
+      const uploadBatchId = crypto.randomUUID()
       const uploadIdentitySide = async (file: File, side: "front" | "back") => {
         const signedResponse = await fetch(`${API_URL}/membership-request/document-upload`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ clubId, side, contentType: file.type }),
+          body: JSON.stringify({ clubId, side, contentType: file.type, uploadBatchId }),
         })
         const signedData = await signedResponse.json()
         if (!signedResponse.ok) throw new Error(signedData.error || "No se pudo preparar la carga segura de la CI.")
@@ -482,13 +521,17 @@ try {
                       <h2 className="text-sm font-bold text-[#092f35]">Verificación de identidad</h2>
                       <p className="mt-1 text-xs leading-5 text-zinc-500">El club necesita estos datos para validar tu solicitud. Las fotos se guardan en privado y solo las puede abrir la administración del club.</p>
                     </div>
-                    <Field label="Nombre completo (como figura en la CI)" placeholder="Nombre y apellido según la cédula" value={identityFullName} onChange={setIdentityFullName} required />
-                    <Field label="Cédula de identidad" placeholder="1.234.567-8" value={identityNumber} onChange={setIdentityNumber} required />
                     <div className="grid gap-4 sm:grid-cols-2">
-                      <IdentityFileField label="Foto del frente de la CI" file={identityFront} onChange={setIdentityFront} />
+                      <IdentityFileField label="Foto del frente de la CI" file={identityFront} onChange={(file) => { setIdentityFront(file); setIdentityOcrStatus(""); if (file) void readIdentityFromFront(file) }} />
                       <IdentityFileField label="Foto del reverso de la CI" file={identityBack} onChange={setIdentityBack} />
                     </div>
-                    <p className="text-xs text-zinc-500">JPG, PNG o WebP · máximo 5 MB por foto.</p>
+                    <p className="text-xs text-zinc-500">JPG, PNG o WebP · máximo 5 MB por foto. Intentaremos leer los datos del frente en este dispositivo.</p>
+                    {identityOcrStatus && <p aria-live="polite" className="text-xs font-medium text-emerald-800">{identityOcrStatus}</p>}
+                    <Field label="Nombre completo (como figura en la CI)" placeholder="Nombre y apellido según la cédula" value={identityFullName} onChange={setIdentityFullName} required />
+                    <div>
+                      <Field label="Cédula de identidad (solo números)" placeholder="12345678" value={identityNumber} onChange={(value) => setIdentityNumber(value.replace(/\D/g, "").slice(0, 8))} required />
+                      <p className="mt-1 text-xs text-zinc-500">Ingresá los números seguidos, sin puntos ni guiones.</p>
+                    </div>
                   </div>
                 )}
 
