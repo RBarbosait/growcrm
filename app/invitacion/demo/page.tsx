@@ -28,11 +28,11 @@ export default function InvitacionDemoPage() {
   const [formError, setFormError] = useState("")
   const [needsLogin, setNeedsLogin] = useState(false)
   const [clubInfo, setClubInfo] = useState<{ id: string; name: string; template: { slug: string } } | null>(null)
-  const [identityFullName, setIdentityFullName] = useState("")
+  const [identityFirstName, setIdentityFirstName] = useState("")
+  const [identityLastName, setIdentityLastName] = useState("")
   const [identityNumber, setIdentityNumber] = useState("")
   const [identityFront, setIdentityFront] = useState<File | null>(null)
   const [identityBack, setIdentityBack] = useState<File | null>(null)
-  const [identityOcrStatus, setIdentityOcrStatus] = useState("")
 
   const [form, setForm] = useState({
     nombre: "",
@@ -43,43 +43,6 @@ export default function InvitacionDemoPage() {
     confirmPassword: "",
     accept: false,
   })
-
-  async function readIdentityFromFront(file: File) {
-    setIdentityOcrStatus("Leyendo los datos de la cédula…")
-    try {
-      const { createWorker } = await import("tesseract.js")
-      const worker = await createWorker(["spa", "eng"])
-      let text = ""
-      try {
-        const result = await worker.recognize(file)
-        text = result.data.text.toUpperCase()
-      } finally {
-        await worker.terminate()
-      }
-
-      const digits = (text.match(/\b\d[\d .-]{5,12}\d\b/g) || [])
-        .map((candidate) => candidate.replace(/\D/g, ""))
-        .find((candidate) => candidate.length >= 6 && candidate.length <= 8)
-      const lines = text.split(/\r?\n/).map((line) => line.replace(/[^A-ZÁÉÍÓÚÜÑ ]/g, " ").replace(/\s+/g, " ").trim()).filter(Boolean)
-      const readLabel = (label: "NOMBRES" | "APELLIDOS") => {
-        const index = lines.findIndex((line) => line.includes(label))
-        if (index < 0) return ""
-        const inline = lines[index].replace(label, "").trim()
-        if (inline.length > 1) return inline
-        return lines[index + 1] || ""
-      }
-      const givenNames = readLabel("NOMBRES")
-      const familyNames = readLabel("APELLIDOS")
-      const fullName = [givenNames, familyNames].filter(Boolean).join(" ").trim()
-
-      if (digits && !identityNumber) setIdentityNumber(digits)
-      if (fullName && !identityFullName) setIdentityFullName(fullName)
-      setIdentityOcrStatus(digits || fullName ? "Detectamos datos. Revisalos y corregí lo que haga falta." : "No pudimos leer los datos automáticamente. Completalos manualmente.")
-    } catch (error) {
-      console.warn("IDENTITY OCR ERROR:", error)
-      setIdentityOcrStatus("No pudimos leer los datos automáticamente. Completalos manualmente.")
-    }
-  }
 
   const updateField = (
     field: keyof typeof form,
@@ -159,7 +122,7 @@ const handleSubmit = async (
     alert("Completá todos los campos obligatorios.")
     return
   }
-  if (isCannabisClub && (!identityFullName.trim() || !/^\d{6,8}$/.test(identityNumber.replace(/[\s.\-]/g, "")) || !identityFront || !identityBack)) {
+  if (isCannabisClub && (!identityFirstName.trim() || !identityLastName.trim() || !/^\d{6,8}$/.test(identityNumber.replace(/[\s.\-]/g, "")) || !identityFront || !identityBack)) {
     alert("Para este club, completá el nombre tal como figura en la CI, el número y las dos fotos.")
     return
   }
@@ -237,7 +200,7 @@ const response = await fetch(`${API_URL}/membership-request`, {
     name: fullName,
     email: session?.user.email || form.email.trim(),
     phone: form.telefono.trim(),
-    ...(isCannabisClub ? { identityFullName: identityFullName.trim(), identityNumber: identityNumber.replace(/[\s.\-]/g, ""), ...identityPaths } : {}),
+    ...(isCannabisClub ? { identityFullName: `${identityLastName.trim()} ${identityFirstName.trim()}`, identityNumber: identityNumber.replace(/[\s.\-]/g, ""), ...identityPaths } : {}),
     ...(session ? {} : { password: form.password }),
   }),
 })
@@ -522,12 +485,14 @@ try {
                       <p className="mt-1 text-xs leading-5 text-zinc-500">El club necesita estos datos para validar tu solicitud. Las fotos se guardan en privado y solo las puede abrir la administración del club.</p>
                     </div>
                     <div className="grid gap-4 sm:grid-cols-2">
-                      <IdentityFileField label="Foto del frente de la CI" file={identityFront} onChange={(file) => { setIdentityFront(file); setIdentityOcrStatus(""); if (file) void readIdentityFromFront(file) }} />
+                      <IdentityFileField label="Foto del frente de la CI" file={identityFront} onChange={setIdentityFront} />
                       <IdentityFileField label="Foto del reverso de la CI" file={identityBack} onChange={setIdentityBack} />
                     </div>
-                    <p className="text-xs text-zinc-500">JPG, PNG o WebP · máximo 5 MB por foto. Intentaremos leer los datos del frente en este dispositivo.</p>
-                    {identityOcrStatus && <p aria-live="polite" className="text-xs font-medium text-emerald-800">{identityOcrStatus}</p>}
-                    <Field label="Nombre completo (como figura en la CI)" placeholder="Nombre y apellido según la cédula" value={identityFullName} onChange={setIdentityFullName} required />
+                    <p className="text-xs text-zinc-500">JPG, PNG o WebP. Las fotos grandes se optimizan en este dispositivo antes de subirlas.</p>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <Field label="Nombre(s) (como figura en la CI)" placeholder="Ej.: Rodrigo" value={identityFirstName} onChange={setIdentityFirstName} required />
+                      <Field label="Apellido(s) (como figura en la CI)" placeholder="Ej.: Barbosa Arnaldo" value={identityLastName} onChange={setIdentityLastName} required />
+                    </div>
                     <div>
                       <Field label="Cédula de identidad (solo números)" placeholder="12345678" value={identityNumber} onChange={(value) => setIdentityNumber(value.replace(/\D/g, "").slice(0, 8))} required />
                       <p className="mt-1 text-xs text-zinc-500">Ingresá los números seguidos, sin puntos ni guiones.</p>
@@ -665,6 +630,43 @@ function Benefit({ text }: { text: string }) {
   )
 }
 
+async function optimizeIdentityImage(file: File): Promise<File> {
+  const maxBytes = 4.5 * 1024 * 1024
+  if (file.size <= maxBytes) return file
+
+  const bitmap = await createImageBitmap(file)
+  try {
+    const maxDimension = 2200
+    const scale = Math.min(1, maxDimension / Math.max(bitmap.width, bitmap.height))
+    let width = Math.max(1, Math.round(bitmap.width * scale))
+    let height = Math.max(1, Math.round(bitmap.height * scale))
+
+    for (let attempt = 0; attempt < 6; attempt++) {
+      const canvas = document.createElement("canvas")
+      canvas.width = width
+      canvas.height = height
+      const context = canvas.getContext("2d")
+      if (!context) throw new Error("No se pudo preparar la imagen.")
+      context.drawImage(bitmap, 0, 0, width, height)
+
+      const blob = await new Promise<Blob | null>((resolve) =>
+        canvas.toBlob(resolve, "image/jpeg", Math.max(0.72, 0.9 - attempt * 0.035))
+      )
+      if (blob && blob.size <= maxBytes) {
+        const baseName = file.name.replace(/\.[^.]+$/, "") || "cedula"
+        return new File([blob], `${baseName}.jpg`, { type: "image/jpeg", lastModified: Date.now() })
+      }
+
+      width = Math.round(width * 0.82)
+      height = Math.round(height * 0.82)
+    }
+  } finally {
+    bitmap.close()
+  }
+
+  throw new Error("No pudimos reducir la foto lo suficiente. Probá con otra imagen.")
+}
+
 function IdentityFileField({
   label,
   file,
@@ -674,26 +676,43 @@ function IdentityFileField({
   file: File | null
   onChange: (file: File | null) => void
 }) {
+  const [optimizing, setOptimizing] = useState(false)
+  const [error, setError] = useState("")
+
   return (
     <label className="block cursor-pointer">
       <span className="mb-2 block text-sm font-semibold text-zinc-700">{label}<span className="ml-1 text-[#007f63]">*</span></span>
-      <span className="flex min-h-12 items-center rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-600">
-        <span className="truncate">{file?.name || "Elegí una imagen"}</span>
+      <span className={`flex min-h-14 items-center rounded-xl border bg-white px-4 py-3 text-base text-zinc-600 transition ${error ? "border-red-300" : "border-zinc-200"}`}>
+        <span className="min-w-0 flex-1 truncate">{optimizing ? "Optimizando foto…" : file?.name || "Elegí o tomá una foto"}</span>
       </span>
+      {error && <span className="mt-2 block text-sm text-red-600">{error}</span>}
       <input
         type="file"
         accept="image/jpeg,image/png,image/webp"
         required
         className="sr-only"
-        onChange={(event) => {
+        disabled={optimizing}
+        onChange={async (event) => {
           const selected = event.target.files?.[0] || null
-          if (selected && selected.size > 5 * 1024 * 1024) {
-            alert("Cada foto puede pesar hasta 5 MB.")
+          setError("")
+          if (!selected) return
+          if (!["image/jpeg", "image/png", "image/webp"].includes(selected.type)) {
+            setError("Elegí una foto JPG, PNG o WebP.")
             event.target.value = ""
             onChange(null)
             return
           }
-          onChange(selected)
+
+          setOptimizing(true)
+          try {
+            onChange(await optimizeIdentityImage(selected))
+          } catch (optimizationError) {
+            setError(optimizationError instanceof Error ? optimizationError.message : "No se pudo preparar la foto.")
+            event.target.value = ""
+            onChange(null)
+          } finally {
+            setOptimizing(false)
+          }
         }}
       />
     </label>
