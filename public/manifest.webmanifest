@@ -1,0 +1,15 @@
+{
+  "id": "/",
+  "name": "GrowCRM",
+  "short_name": "GrowCRM",
+  "description": "Tu espacio para conectar con los clubes de los que sos parte.",
+  "start_url": "/dashboard",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f5faf8",
+  "theme_color": "#006b55",
+  "icons": [
+    { "src": "/casadata-logo.png", "sizes": "1024x1024", "type": "image/png", "purpose": "any" },
+    { "src": "/casadata-logo.png", "sizes": "1024x1024", "type": "image/png", "purpose": "maskable" }
+  ]
+}

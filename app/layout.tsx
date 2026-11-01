@@ -10,6 +10,12 @@ export const metadata: Metadata = {
   },
   description:
     "Plataforma de gestión para clubes. Administrá socios, reservas, productos, stock y comunicación desde un solo lugar.",
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    title: "GrowCRM",
+    statusBarStyle: "default",
+  },
 }
 
 export default function RootLayout({
