@@ -682,9 +682,12 @@ function MemberProductModal({
           {product.imageUrl ? <img src={product.imageUrl} alt={product.name} className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center text-emerald-700/60"><Package className="h-16 w-16" /></div>}
           <div className="absolute inset-0 bg-gradient-to-t from-[#062f2a]/65 via-transparent to-black/10" />
           {product.category && <span className="absolute bottom-5 left-6 rounded-full border border-white/30 bg-white/90 px-3.5 py-1.5 text-xs font-bold uppercase tracking-wide text-emerald-900 shadow-sm">{product.category}</span>}
-          <span className="absolute bottom-4 right-5 rounded-full bg-black/35 px-3 py-1 text-[11px] font-semibold text-white sm:hidden">Deslizá para ver más ↓</span>
         </div>
           <div className="p-5 pb-7 sm:p-8">
+            <div className="mb-5 flex items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-center text-sm font-semibold text-emerald-900 sm:hidden">
+              <span aria-hidden="true" className="animate-bounce text-lg leading-none">↓</span>
+              <span>Deslizá hacia abajo para ver más datos del producto</span>
+            </div>
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 {product.brand && <p className="text-xs font-bold uppercase tracking-[0.16em] text-emerald-700">{product.brand}</p>}
