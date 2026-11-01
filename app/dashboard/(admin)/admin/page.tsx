@@ -101,7 +101,10 @@ const [saving, setSaving] = useState(false)
     if (!activeClub) return
 
     let cancelled = false
+    let refreshing = false
     const refreshAttention = async () => {
+      if (cancelled || refreshing || document.visibilityState === "hidden") return
+      refreshing = true
       try {
         const { data: { session } } = await supabase.auth.getSession()
         if (!session) return
@@ -122,17 +125,20 @@ const [saving, setSaving] = useState(false)
       } catch (attentionError) {
         console.warn("No se pudieron actualizar los avisos del dashboard:", attentionError)
       } finally {
+        refreshing = false
         if (!cancelled) setAttentionLoading(false)
       }
     }
 
     void refreshAttention()
-    const interval = window.setInterval(refreshAttention, 30000)
+    const interval = window.setInterval(refreshAttention, 5000)
     window.addEventListener("focus", refreshAttention)
+    document.addEventListener("visibilitychange", refreshAttention)
     return () => {
       cancelled = true
       window.clearInterval(interval)
       window.removeEventListener("focus", refreshAttention)
+      document.removeEventListener("visibilitychange", refreshAttention)
     }
   }, [activeClub])
 
