@@ -17,6 +17,7 @@ export default function PushNotifications() {
   const [enabled, setEnabled] = useState(false)
   const [working, setWorking] = useState(false)
   const [message, setMessage] = useState("")
+  const [collapsed, setCollapsed] = useState(true)
 
   useEffect(() => {
     const available = "serviceWorker" in navigator && "PushManager" in window && "Notification" in window
@@ -25,6 +26,7 @@ export default function PushNotifications() {
     void navigator.serviceWorker.register("/push-sw.js", { scope: "/" }).then(async (registration) => {
       const subscription = await registration.pushManager.getSubscription()
       setEnabled(Boolean(subscription))
+      setCollapsed(Boolean(subscription))
     }).catch((error) => console.error("PUSH SERVICE WORKER ERROR:", error))
   }, [])
 
@@ -84,9 +86,22 @@ export default function PushNotifications() {
   }
 
   if (!supported) return null
+  if (collapsed) {
+    return (
+      <button
+        type="button"
+        onClick={() => setCollapsed(false)}
+        aria-label="Ver configuración de notificaciones push"
+        title="Notificaciones push"
+        className="fixed bottom-4 right-4 z-[90] flex h-11 w-11 items-center justify-center rounded-full border border-emerald-100 bg-white text-emerald-700 shadow-lg shadow-emerald-950/10 transition hover:scale-105 hover:bg-emerald-50 sm:bottom-6 sm:right-6"
+      >
+        {enabled ? <BellRing className="h-5 w-5" /> : <Bell className="h-5 w-5" />}
+      </button>
+    )
+  }
   return (
     <aside className="fixed bottom-4 right-4 z-[90] max-w-[calc(100vw-2rem)] sm:bottom-6 sm:right-6">
-      <div className="rounded-2xl border border-emerald-100 bg-white/95 p-3 shadow-xl shadow-emerald-950/10 backdrop-blur sm:p-4">
+      <div className="rounded-2xl border border-emerald-100 bg-white/95 p-3 shadow-lg shadow-emerald-950/10 backdrop-blur sm:p-4">
         <div className="flex items-center gap-3">
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
             {enabled ? <BellRing className="h-5 w-5" /> : <Bell className="h-5 w-5" />}
@@ -97,6 +112,9 @@ export default function PushNotifications() {
           </div>
           <button type="button" disabled={working} onClick={() => void togglePush()} className="shrink-0 rounded-xl bg-[#006b55] px-3 py-2 text-xs font-semibold text-white disabled:opacity-60">
             {working ? "Un momento…" : enabled ? "Desactivar" : "Activar"}
+          </button>
+          <button type="button" onClick={() => setCollapsed(true)} aria-label="Minimizar aviso de notificaciones" title="Minimizar" className="rounded-lg p-1.5 text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-700">
+            <X className="h-4 w-4" />
           </button>
         </div>
         {message && <div className="mt-3 flex items-start gap-2 rounded-xl bg-emerald-50 px-3 py-2 text-xs text-emerald-900"><p className="flex-1">{message}</p><button aria-label="Cerrar aviso" onClick={() => setMessage("")}><X className="h-3.5 w-3.5" /></button></div>}
