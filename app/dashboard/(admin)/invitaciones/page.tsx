@@ -170,7 +170,7 @@ ${clubName || "El equipo del club"}`;
             </h1>
 
             <p className="mt-1 text-sm text-gray-500">
-              Prepará el mensaje, revisá cómo se verá y elegí cómo compartirlo.
+              Personalizá el correo, elegí a quién invitar y compartilo.
             </p>
           </div>
           <div className="hidden items-center gap-2 rounded-full border border-emerald-100 bg-white px-4 py-2 text-xs font-semibold text-emerald-800 shadow-sm sm:flex">
@@ -264,8 +264,8 @@ ${clubName || "El equipo del club"}`;
           <section>
 
             <div className="mb-3">
-              <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#007f63]">Paso 2</p>
-              <h2 className="mt-1 text-lg font-bold text-[#092f35]">Vista previa</h2>
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#007f63]">Así lo verá la persona invitada</p>
+              <h2 className="mt-1 text-lg font-bold text-[#092f35]">Vista previa del correo</h2>
               <p className="text-sm text-gray-500">Vista del asunto y el texto que se abrirán en Gmail.</p>
             </div>
 
@@ -277,30 +277,32 @@ ${clubName || "El equipo del club"}`;
                 {invitationSubject}
               </div>
               <div className="max-h-[560px] overflow-y-auto px-5 py-5">
-                <p className="mb-4 text-sm text-gray-500">Para: destinatario</p>
+                <p className="mb-4 text-sm text-gray-500">El destinatario se agrega al abrir Gmail.</p>
                 <div className="whitespace-pre-wrap break-words text-sm leading-6 text-gray-800">
                   {invitationBody}
                 </div>
               </div>
             </div>
+          </section>
+        </div>
 
 {/* COMPARTIR */}
-<div className="mt-6 rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
+<section className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
   <div className="flex items-start justify-between gap-3">
     <div>
-      <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#007f63]">Paso 3</p>
-      <h3 className="mt-1 text-base font-bold text-[#092f35]">Compartí la invitación</h3>
+      <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#007f63]">Paso 2</p>
+      <h3 className="mt-1 text-lg font-bold text-[#092f35]">Elegí a quién invitar</h3>
     </div>
     <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#f0f8f5] text-[#007f63]"><Users size={17} /></span>
   </div>
-  <p className="mt-2 text-xs leading-5 text-gray-500">Prepará el correo desde Gmail o compartí el enlace por WhatsApp.</p>
+  <p className="mt-2 text-sm leading-5 text-gray-500">Agregá uno o varios correos. Si agregás más de uno, se incluirán en copia oculta.</p>
 
-  <div className="mt-5">
+  <div className="mt-5 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(320px,0.8fr)]">
 
     <div className="mb-4">
 
       <label className="mb-2 block text-sm font-semibold text-gray-700">
-        Destinatarios <span className="font-normal text-gray-400">{validRecipients.length === 1 ? "(un destinatario)" : "(en copia oculta si son varios)"}</span>
+        Correos de las personas a invitar
       </label>
 
       <textarea
@@ -325,7 +327,9 @@ pedro@gmail.com`}
 
     </div>
 
-    <div className="flex gap-3">
+    <div>
+      <p className="mb-3 text-xs font-bold uppercase tracking-[0.16em] text-[#007f63]">Paso 3 · Compartí</p>
+      <div className="flex gap-3">
 
       <button
         type="button"
@@ -345,7 +349,7 @@ pedro@gmail.com`}
         Abrir Gmail
       </button>
 
-    </div>
+      </div>
 
     <button
       type="button"
@@ -377,8 +381,7 @@ pedro@gmail.com`}
     </button>
 
   </div>
-
-</div>
+  </div>
 
             {/* INFO */}
             <div className="mt-4 rounded-2xl bg-[#eef8f5] p-4">
@@ -400,7 +403,6 @@ pedro@gmail.com`}
 
           </section>
 
-        </div>
       </div>
     </main>
   );
