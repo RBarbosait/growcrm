@@ -87,14 +87,29 @@ export default function InvitacionDemoPage() {
     return () => { active = false }
   }, [])
 
-  async function changeAccount() {
-    const { error } = await supabase.auth.signOut()
-    if (error) {
-      setFormError("No se pudo cerrar la sesión actual. Intentá nuevamente.")
-      return
+  async function continueWithAccount() {
+    if (signedInAccount) {
+      const { error } = await supabase.auth.signOut()
+      if (error) {
+        setFormError("No se pudo cerrar la sesión actual. Intentá nuevamente.")
+        return
+      }
+      setSignedInAccount(null)
     }
-    setSignedInAccount(null)
     goToLogin()
+  }
+
+  async function startNewAccount() {
+    if (signedInAccount) {
+      const { error } = await supabase.auth.signOut()
+      if (error) {
+        setFormError("No se pudo cerrar la sesión actual. Intentá nuevamente.")
+        return
+      }
+      setSignedInAccount(null)
+      setForm((current) => ({ ...current, email: "", nombre: "", apellido: "", telefono: "", password: "", confirmPassword: "" }))
+    }
+    setShowForm(true)
   }
 
   function goToLogin() {
@@ -367,64 +382,40 @@ try {
                   <User className="h-6 w-6 text-[#007f63]" />
                 </div>
 
-                {signedInAccount ? (
-                  <>
-                    <h2 className="mt-6 text-2xl font-bold tracking-tight text-[#092f35]">
-                      Continuá con tu cuenta
-                    </h2>
-                    <p className="mt-3 text-sm leading-6 text-zinc-500">
-                      Vas a pedir tu incorporación a este club usando la cuenta que ya está abierta.
-                    </p>
-                    <div className="mt-5 rounded-xl bg-[#f5faf8] p-4 text-sm text-[#36544f]">
-                      Cuenta: <strong className="break-all text-[#092f35]">{signedInAccount.email}</strong>
-                    </div>
-                    <button type="button" onClick={changeAccount} className="mt-3 self-start text-sm font-semibold text-[#007f63] underline underline-offset-4 hover:text-[#005c49]">¿No es tu cuenta? Usar otra cuenta</button>
-                    <button
-                      type="button"
-                      onClick={() => setShowForm(true)}
-                      className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-[#006b55] px-5 py-4 text-sm font-bold text-white shadow-sm transition hover:bg-[#005c49]"
-                    >
-                      Solicitar ingreso al club
-                      <ArrowRight className="h-4 w-4" />
-                    </button>
-                    <p className="mt-4 text-center text-xs leading-5 text-zinc-400">
-                      No necesitás crear otra cuenta ni cambiar tu contraseña. El club debe aprobar tu solicitud.
-                    </p>
-                  </>
-                ) : (
-                  <>
-                    <h2 className="mt-6 text-2xl font-bold tracking-tight text-[#092f35]">
-                      ¿Cómo querés continuar?
-                    </h2>
-                    <p className="mt-3 text-sm leading-6 text-zinc-500">
-                      Elegí según tu situación. En ambos casos vas a solicitar el ingreso a este club.
-                    </p>
+                <h2 className="mt-6 text-2xl font-bold tracking-tight text-[#092f35]">
+                  ¿Cómo querés continuar?
+                </h2>
+                <p className="mt-3 text-sm leading-6 text-zinc-500">
+                  Elegí según tu situación. En ambos casos vas a solicitar el ingreso a este club.
+                </p>
 
-                    <button
-                      type="button"
-                      onClick={goToLogin}
-                      className="mt-7 flex w-full flex-col items-start rounded-2xl border border-[#b9e4d7] bg-[#f5faf8] p-5 text-left transition hover:border-[#007f63]"
-                    >
-                      <span className="text-base font-bold text-[#092f35]">Ya tengo cuenta</span>
-                      <span className="mt-1 text-sm leading-5 text-zinc-500">Iniciá sesión y vinculá este club a tu cuenta existente.</span>
-                      <span className="mt-3 inline-flex items-center gap-2 text-sm font-bold text-[#007f63]">Continuar con mi cuenta <ArrowRight className="h-4 w-4" /></span>
-                    </button>
+                <div className="mt-7">
+                  <button
+                    type="button"
+                    onClick={() => void continueWithAccount()}
+                    className="flex w-full flex-col items-start rounded-2xl border border-[#b9e4d7] bg-[#f5faf8] p-5 text-left transition hover:border-[#007f63]"
+                  >
+                    <span className="text-base font-bold text-[#092f35]">Ya tengo cuenta</span>
+                    <span className="mt-1 text-sm leading-5 text-zinc-500">
+                      Iniciá sesión y vinculá este club a tu cuenta existente.
+                    </span>
+                    <span className="mt-3 inline-flex items-center gap-2 text-sm font-bold text-[#007f63]">Continuar con mi cuenta <ArrowRight className="h-4 w-4" /></span>
+                  </button>
+                </div>
 
-                    <button
-                      type="button"
-                      onClick={() => setShowForm(true)}
-                      className="mt-3 flex w-full flex-col items-start rounded-2xl bg-[#006b55] p-5 text-left text-white shadow-sm transition hover:bg-[#005c49]"
-                    >
-                      <span className="text-base font-bold">Soy nuevo en GrowCRM</span>
-                      <span className="mt-1 text-sm leading-5 text-white/80">Creá tu cuenta y enviá la solicitud para unirte.</span>
-                      <span className="mt-3 inline-flex items-center gap-2 text-sm font-bold">Crear cuenta y solicitar ingreso <ArrowRight className="h-4 w-4" /></span>
-                    </button>
+                <button
+                  type="button"
+                  onClick={() => void startNewAccount()}
+                  className="mt-3 flex w-full flex-col items-start rounded-2xl bg-[#006b55] p-5 text-left text-white shadow-sm transition hover:bg-[#005c49]"
+                >
+                  <span className="text-base font-bold">Soy nuevo en GrowCRM</span>
+                  <span className="mt-1 text-sm leading-5 text-white/80">Creá tu cuenta y enviá la solicitud para unirte.</span>
+                  <span className="mt-3 inline-flex items-center gap-2 text-sm font-bold">Crear cuenta y solicitar ingreso <ArrowRight className="h-4 w-4" /></span>
+                </button>
 
-                    <p className="mt-4 text-center text-xs leading-5 text-zinc-400">
-                      El club debe aprobar tu solicitud antes de activar la membresía.
-                    </p>
-                  </>
-                )}
+                <p className="mt-4 text-center text-xs leading-5 text-zinc-400">
+                  El club debe aprobar tu solicitud antes de activar la membresía.
+                </p>
               </div>
 
             </div>
