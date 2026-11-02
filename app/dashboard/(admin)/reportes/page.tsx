@@ -16,7 +16,7 @@ type Reservation = {
   completedAt?: string | null
   saleUnitPrice?: number | null
   saleTotal?: number | null
-  product: { id: string; name: string; salePrice: number | null }
+  product: { id: string; name: string; category: string | null; salePrice: number | null; attributes?: Record<string, unknown> | null }
 }
 type Product = { id: string; name: string; stock: number; minStock: number }
 type Club = { id: string; role?: string }
@@ -99,13 +99,22 @@ export default function ReportsPage() {
       const month = months.find((item) => item.key === key)
       if (month) month.total += saleAmount(sale)
     }
-    const topProducts = Object.values(completed.reduce<Record<string, { id: string; name: string; amount: number; quantity: number }>>((items, sale) => {
-      const key = sale.product.id
-      items[key] ||= { id: key, name: sale.product.name, amount: 0, quantity: 0 }
+    const topProducts = Object.values(completed.reduce<Record<string, { id: string; name: string; detail: string; unit: string; amount: number; quantity: number }>>((items, sale) => {
+      const attributes = sale.product.attributes || {}
+      const category = sale.product.category || "Producto"
+      const isFlower = category.toLocaleLowerCase("es").includes("flor")
+      const variety = typeof attributes.nombre === "string" ? attributes.nombre.trim() : ""
+      const strainType = typeof attributes["tipo-cepa"] === "string" ? attributes["tipo-cepa"].trim() : ""
+      const unit = typeof attributes.stockUnit === "string" && attributes.stockUnit.trim() ? attributes.stockUnit.trim() : "unidades"
+      // Agrupar flores por variedad/cepa aunque estén publicadas como productos separados.
+      const key = isFlower && variety ? `flower:${variety.toLocaleLowerCase("es")}:${strainType.toLocaleLowerCase("es")}` : `product:${sale.product.id}`
+      const name = isFlower && variety ? variety : sale.product.name
+      const detail = isFlower ? [category, strainType].filter(Boolean).join(" · ") : category
+      items[key] ||= { id: key, name, detail, unit, amount: 0, quantity: 0 }
       items[key].amount += saleAmount(sale)
       items[key].quantity += Number(sale.quantity) || 0
       return items
-    }, {})).sort((a, b) => b.amount - a.amount).slice(0, 5)
+    }, {})).sort((a, b) => b.quantity - a.quantity || b.amount - a.amount).slice(0, 5)
     const statuses = [
       { label: "Pendientes", count: pending, style: "bg-amber-50 text-amber-800" },
       { label: "Aprobadas", count: reservations.filter((item) => item.status === "APPROVED").length, style: "bg-sky-50 text-sky-800" },
@@ -134,7 +143,7 @@ export default function ReportsPage() {
         </section>
 
         <section className="mt-5 grid gap-5 xl:grid-cols-2">
-          <article className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm sm:p-6"><h2 className="text-lg font-bold">Productos más vendidos</h2><p className="mt-1 text-sm text-zinc-500">Ordenados por importe de ventas entregadas.</p>{report.topProducts.length ? <div className="mt-4 divide-y divide-zinc-100">{report.topProducts.map((product, index) => { const max = report.topProducts[0]?.amount || 1; return <div key={product.id} className="py-3"><div className="flex items-center justify-between gap-3"><span className="truncate text-sm font-semibold"><span className="mr-2 text-zinc-400">{index + 1}.</span>{product.name}</span><span className="shrink-0 text-sm font-bold">{money(product.amount)}</span></div><div className="mt-2 h-2 overflow-hidden rounded-full bg-zinc-100"><div className="h-full rounded-full bg-emerald-700" style={{ width: `${Math.max(4, product.amount / max * 100)}%` }} /></div></div> })}</div> : <EmptyState text="Todavía no hay ventas para comparar productos." />}</article>
+          <article className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm sm:p-6"><h2 className="text-lg font-bold">Ranking de más vendidos</h2><p className="mt-1 text-sm text-zinc-500">Ordenado por cantidad entregada. Las flores se agrupan por variedad y tipo de cepa.</p>{report.topProducts.length ? <div className="mt-4 divide-y divide-zinc-100">{report.topProducts.map((product, index) => { const max = report.topProducts[0]?.quantity || 1; return <div key={product.id} className="py-3"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="truncate text-sm font-semibold"><span className="mr-2 text-zinc-400">{index + 1}.</span>{product.name}</p><p className="mt-1 pl-6 text-xs text-zinc-500">{product.detail}</p></div><span className="shrink-0 text-right"><strong className="block text-sm font-bold">{product.quantity.toLocaleString("es-UY")} {product.unit} vendidos</strong><span className="text-xs text-zinc-500">{money(product.amount)}</span></span></div><div className="mt-2 h-2 overflow-hidden rounded-full bg-zinc-100"><div className="h-full rounded-full bg-emerald-700" style={{ width: `${Math.max(4, product.quantity / max * 100)}%` }} /></div></div> })}</div> : <EmptyState text="Cuando registres una entrega, vas a ver qué productos y variedades son los más elegidos." />}</article>
           <article className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm sm:p-6"><div className="flex items-center justify-between gap-3"><div><h2 className="text-lg font-bold">Stock para revisar</h2><p className="mt-1 text-sm text-zinc-500">Agotados o por debajo del mínimo configurado.</p></div><span className="rounded-full bg-amber-50 px-3 py-1 text-sm font-bold text-amber-800">{report.stockAlerts.length}</span></div>{report.stockAlerts.length ? <div className="mt-4 divide-y divide-zinc-100">{report.stockAlerts.slice(0, 6).map((product) => <div key={product.id} className="flex items-center justify-between gap-3 py-3"><span className="truncate text-sm font-semibold">{product.name}</span><span className={`shrink-0 rounded-full px-3 py-1 text-xs font-bold ${Number(product.stock) <= 0 ? "bg-red-50 text-red-700" : "bg-amber-50 text-amber-800"}`}>{Number(product.stock) <= 0 ? "Agotado" : `${product.stock} disponibles`}</span></div>)}</div> : <EmptyState text="Todo el catálogo está por encima de sus mínimos." />}<Link href="/dashboard/stock" className="mt-4 inline-flex text-sm font-bold text-emerald-800 hover:underline">Ver stock <span className="ml-1">→</span></Link></article>
         </section>
       </>}
