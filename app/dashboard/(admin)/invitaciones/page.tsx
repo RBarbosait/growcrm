@@ -24,10 +24,6 @@ export default function InvitacionesPage() {
     "Queremos invitarte a formar parte de nuestra comunidad. Completá tu solicitud de ingreso y la administración del club la revisará. Te avisaremos cuando esté aprobada."
   );
 
-  const [buttonText, setButtonText] = useState(
-    "Unirme al club"
-  );
-
   const [copied, setCopied] = useState(false);
   const [clubName, setClubName] = useState("");
   const [clubDescription, setClubDescription] = useState("");
@@ -76,6 +72,23 @@ const invitationUrl = clubId
   ? `${PUBLIC_APP_URL}/invitacion/demo?clubId=${encodeURIComponent(clubId)}`
   : "";
 
+  const invitationSubject = title || `¡${clubName || "el club"} te invita a sumarte!`;
+  const invitationBody = `Hola,
+
+${description}
+${clubDescription ? `\nUn poco sobre ${clubName || "el club"}:\n${clubDescription}\n` : ""}
+Tu invitación a ${clubName || "el club"}:
+
+Para empezar, completá tu solicitud desde este enlace:
+${invitationUrl}
+
+El equipo de ${clubName || "el club"} revisará tu solicitud y te avisará cuando tu ingreso quede aprobado.
+
+Si tenés alguna pregunta, respondé a este correo.
+
+¡Nos encantará recibirte!
+${clubName || "El equipo del club"}`;
+
   const handleCopy = async () => {
     if (!invitationUrl) return;
     try {
@@ -107,33 +120,15 @@ const invitationUrl = clubId
       return;
     }
 
-    const name = clubName || "el club";
-    const subject = title || `¡${name} te invita a sumarte!`;
     const recipientField = validRecipients.length === 1
       ? `&to=${encodeURIComponent(validRecipients[0])}`
       : `&bcc=${encodeURIComponent(validRecipients.join(","))}`;
 
-    const body = `Hola,
-
-${description}
-${clubDescription ? `\nUn poco sobre ${name}:\n${clubDescription}\n` : ""}
-Tu invitación a ${name}:
-
-Para empezar, completá tu solicitud desde este enlace:
-${invitationUrl}
-
-El equipo de ${name} revisará tu solicitud y te avisará cuando tu ingreso quede aprobado.
-
-Si tenés alguna pregunta, respondé a este correo.
-
-¡Nos encantará recibirte!
-${name}`;
-
     const gmailUrl =
       `https://mail.google.com/mail/?view=cm&fs=1` +
       recipientField +
-      `&su=${encodeURIComponent(subject)}` +
-      `&body=${encodeURIComponent(body)}`;
+      `&su=${encodeURIComponent(invitationSubject)}` +
+      `&body=${encodeURIComponent(invitationBody)}`;
 
     const gmailWindow = window.open(gmailUrl, "_blank");
     if (!gmailWindow) {
@@ -230,21 +225,6 @@ ${name}`;
                 />
               </div>
 
-              {/* TEXTO BOTON */}
-              <div>
-                <label className="mb-2 block text-sm font-semibold text-gray-700">
-                  Texto del botón
-                </label>
-
-                <input
-                  type="text"
-                  value={buttonText}
-                  onChange={(e) => setButtonText(e.target.value)}
-                  placeholder="Ej. Unirme al club"
-                  className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-[#007f63] focus:ring-2 focus:ring-[#007f63]/10"
-                />
-              </div>
-
               {/* ENLACE */}
               <div>
                 <label className="mb-2 block text-sm font-semibold text-gray-700">
@@ -286,45 +266,22 @@ ${name}`;
             <div className="mb-3">
               <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#007f63]">Paso 2</p>
               <h2 className="mt-1 text-lg font-bold text-[#092f35]">Vista previa</h2>
-              <p className="text-sm text-gray-500">Así quedará el correo antes de abrirlo en Gmail.</p>
+              <p className="text-sm text-gray-500">Vista del asunto y el texto que se abrirán en Gmail.</p>
             </div>
 
-            <div className="overflow-hidden rounded-3xl border border-emerald-100 bg-white shadow-sm">
-
-              {/* CONTENT */}
-              <div className="bg-gradient-to-br from-[#f1faf6] via-white to-[#fffdf8] p-7">
-
-                <div className="mb-5 flex items-center gap-2">
-                  <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#006b55] text-white"><Sparkles size={17} /></span>
-                  <span className="inline-flex rounded-full bg-[#e6f5f0] px-3 py-1 text-xs font-bold uppercase tracking-wide text-[#007f63]">
-                    {clubName ? `Una invitación de ${clubName}` : "Invitación del club"}
-                  </span>
-                </div>
-
-                <h3 className="text-2xl font-bold leading-tight text-[#092f35]">
-                  {title || "Título de la invitación"}
-                </h3>
-
-                <p className="mt-5 text-sm font-semibold text-[#092f35]">Hola,</p>
-                <p className="mt-2 whitespace-pre-line text-sm leading-6 text-gray-600">
-                  {description || "Texto de la invitación..."}
-                </p>
-
-                {clubDescription && (
-                  <div className="mt-5 rounded-2xl border border-emerald-100 bg-white/80 p-4">
-                    <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#007f63]">Un poco sobre el club</p>
-                    <p className="mt-2 whitespace-pre-line text-sm leading-6 text-gray-600">{clubDescription}</p>
-                  </div>
-                )}
-
-                <div className="mt-6 rounded-2xl border border-emerald-100 bg-white/80 p-4">
-                  <p className="text-xs leading-5 text-gray-500">La administración del club revisará tu solicitud y te avisará cuando quede aprobada.</p>
-                  <p className="mt-3 text-sm font-bold text-[#006b55]">{buttonText || "Unirme al club"} →</p>
-                </div>
-                <p className="mt-5 text-sm leading-6 text-gray-600">¡Ojalá te sumes!<br />Con cariño,<br /><strong>{clubName || "El equipo del club"}</strong></p>
-
+            <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+              <div className="border-b border-gray-100 bg-gray-50 px-5 py-3 text-xs text-gray-500">
+                Asunto
               </div>
-
+              <div className="border-b border-gray-100 px-5 py-4 text-sm font-semibold text-gray-900">
+                {invitationSubject}
+              </div>
+              <div className="max-h-[560px] overflow-y-auto px-5 py-5">
+                <p className="mb-4 text-sm text-gray-500">Para: destinatario</p>
+                <div className="whitespace-pre-wrap break-words text-sm leading-6 text-gray-800">
+                  {invitationBody}
+                </div>
+              </div>
             </div>
 
 {/* COMPARTIR */}
