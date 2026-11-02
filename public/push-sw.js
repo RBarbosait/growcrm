@@ -7,8 +7,6 @@ self.addEventListener("push", (event) => {
     icon: "/casadata-logo.png",
     badge: "/casadata-logo.png",
     data: { url: payload.url || "/dashboard" },
-    tag: payload.tag || "growcrm-update",
-    renotify: false,
   }
   event.waitUntil(self.registration.showNotification(title, options))
 })
